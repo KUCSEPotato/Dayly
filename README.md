@@ -1,4 +1,4 @@
-# Dayly · Personal Todo Management
+# Dayly / Personal Todo Management
 
 FastAPI를 학습하며 실제로 사용할 수 있는 **로컬 단일 사용자 할 일 관리 MVP**입니다. 날짜별 할 일, 월간 달력, 최근 7일 기록과 달성률을 React 화면에서 관리합니다. 데이터는 실제 API와 SQLite에 저장하며, 샘플 데이터를 자동으로 넣지 않습니다.
 
