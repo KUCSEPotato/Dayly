@@ -1,0 +1,31 @@
+# Backend: install locked dependencies once, then keep only runtime files.
+FROM ghcr.io/astral-sh/uv:0.11.33 AS uv
+
+FROM python:3.13-slim AS builder
+COPY --from=uv /uv /usr/local/bin/uv
+WORKDIR /app
+ENV UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
+COPY backend/pyproject.toml backend/uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev --no-install-project
+
+FROM python:3.13-slim AS runtime
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+WORKDIR /app
+RUN groupadd --gid 10001 dayly \
+    && useradd --uid 10001 --gid dayly --no-create-home dayly \
+    && mkdir -p /app/data \
+    && chown dayly:dayly /app/data
+
+COPY --from=builder /app/.venv /app/.venv
+COPY backend/app ./app
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./alembic.ini
+COPY --chmod=755 deploy/start-backend.sh /usr/local/bin/start-backend
+
+USER dayly
+EXPOSE 8000
+ENTRYPOINT ["start-backend"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

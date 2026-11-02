@@ -1,0 +1,43 @@
+name: dayly
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/DockerFile
+    environment:
+      DATABASE_URL: sqlite:////app/data/todo.db
+      CORS_ORIGINS: '[]'
+    volumes:
+      - data:/app/data
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      # This queries the database too, so readiness includes a migrated schema.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/stats/weekly', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/frontend.Dockerfile
+    ports:
+      # This application is personal and has no authentication.
+      - "127.0.0.1:${DAYLY_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+        restart: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/api/stats/weekly"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  data:
