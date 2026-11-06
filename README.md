@@ -28,7 +28,7 @@ backend/
 │   ├── schemas/               # API 입출력 계약·검증
 │   │   ├── task.py
 │   │   └── statistics.py
-│   ├── models/task.py         # DB 테이블과 제약조건
+│   ├── models/task.py         # DB 테이블과 제약조건 
 │   ├── services/              # 비즈니스 규칙·집계·트랜잭션
 │   │   ├── tasks.py
 │   │   ├── statistics.py

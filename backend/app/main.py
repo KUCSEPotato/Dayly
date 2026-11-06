@@ -9,7 +9,7 @@ from app.api import statistics, tasks
 from app.core.config import get_settings
 from app.core.errors import DomainError
 
-app = FastAPI(title="Dayly API", version="0.1.0", description="개인용 할 일 · 달력 · 최근 7일 통계")
+app = FastAPI(title="Dayly API", version="0.2.0", description="개인용 할 일 · 달력 · 최근 7일 통계")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origins,

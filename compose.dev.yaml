@@ -1,0 +1,43 @@
+# Standalone configuration: use -f compose.dev.yaml, without merging compose.yaml.
+# Keeping the port and volume definitions separate avoids Compose list merging.
+name: dayly-dev
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/DockerFile
+    environment:
+      DATABASE_URL: sqlite:////app/data/todo.db
+      CORS_ORIGINS: '[]'
+    volumes:
+      - dev-data:/app/data
+    init: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/stats/weekly', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/frontend.Dockerfile
+    ports:
+      - "127.0.0.1:8081:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+        restart: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/api/stats/weekly"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  dev-data:

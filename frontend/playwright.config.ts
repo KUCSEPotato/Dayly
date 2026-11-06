@@ -5,15 +5,17 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const frontend = dirname(fileURLToPath(import.meta.url))
-const database = join(mkdtempSync(join(tmpdir(), 'dayly-e2e-')), 'test.db')
+// Supply only an isolated test instance here; these tests create and delete tasks.
+const externalBaseUrl = process.env.E2E_BASE_URL
+const database = externalBaseUrl ? '' : join(mkdtempSync(join(tmpdir(), 'dayly-e2e-')), 'test.db')
 
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   workers: 1,
-  use: { baseURL: 'http://127.0.0.1:5174', trace: 'retain-on-failure' },
+  use: { baseURL: externalBaseUrl ?? 'http://127.0.0.1:5174', trace: 'retain-on-failure' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: [
+  webServer: externalBaseUrl ? undefined : [
     {
       command: '.venv/bin/alembic upgrade head && .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8001',
       cwd: resolve(frontend, '../backend'),

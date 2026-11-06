@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, CalendarDays, Check, ChevronRight, CircleHelp, LayoutDashboard, LoaderCircle, RefreshCw, Sprout, X } from 'lucide-react'
+import { CalendarDays, Check, ChevronRight, CircleHelp, LayoutDashboard, LoaderCircle, RefreshCw, Sprout, X } from 'lucide-react'
 import { Calendar } from './components/Calendar'
+import { CompletionSummary } from './components/CompletionSummary'
 import { TaskForm } from './components/TaskForm'
 import { TaskList } from './components/TaskList'
 import { WeeklyStatistics } from './components/WeeklyStatistics'
 import { useDashboard } from './hooks/useDashboard'
 import { api } from './lib/api'
-import { formatDay, rateLabel, seoulToday, shiftMonth } from './lib/dates'
+import { formatDay, seoulToday, shiftMonth } from './lib/dates'
 import type { Task, TaskInput } from './types'
 
 export default function App() {
@@ -63,7 +64,7 @@ export default function App() {
       <header className="topbar"><div className="breadcrumb"><span>나의 워크스페이스</span><ChevronRight size={13} /><strong>나의 하루</strong></div><span className="topbar-date"><CalendarDays size={15} />{formatDay(today, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</span></header>
       <div className="page-content">
         <section className="page-intro"><div><div className="intro-eyebrow"><span />A FRESH LITTLE START</div><h1>오늘도, 나의 속도로<span>.</span></h1><p>작은 계획을 세우고, 하나씩 채워 가는 나다운 하루.</p></div>
-          <div className="week-chip"><div className="week-chip-icon"><Sprout size={23} strokeWidth={1.5} /></div><div><span>최근 7일 달성률</span><strong>{loading ? '불러오는 중' : error ? '연결 확인 필요' : rateLabel(data?.weekly.completion_rate ?? null)}</strong></div><ArrowRight size={17} /></div></section>
+          <CompletionSummary weekly={data?.weekly} loading={loading} error={Boolean(error)} /></section>
         {error ? <div className="error-banner" role="alert"><div><strong>기록을 불러오지 못했어요.</strong><p>{error}</p></div><button className="button button-quiet" onClick={refresh}><RefreshCw size={15} />다시 시도</button></div> : null}
         {mutationError && <div className="error-banner" role="alert"><p>{mutationError}</p><button className="icon-button" aria-label="오류 닫기" onClick={() => setMutationError(null)}><X size={18} /></button></div>}
         <div className="dashboard-grid">
