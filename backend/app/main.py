@@ -5,11 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api import statistics, tasks
+from app.api import growth, retrospectives, statistics, tasks
 from app.core.config import get_settings
 from app.core.errors import DomainError
 
-app = FastAPI(title="Dayly API", version="0.1.0", description="개인용 할 일 · 달력 · 최근 7일 통계")
+app = FastAPI(title="Dayly API", version="0.2.1", description="개인용 할 일 · 고정 회고 · 성장 기록")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origins,
@@ -19,12 +19,14 @@ app.add_middleware(
 )
 app.include_router(tasks.router, prefix="/api")
 app.include_router(statistics.router, prefix="/api")
+app.include_router(retrospectives.router, prefix="/api")
+app.include_router(growth.router, prefix="/api")
 
 
 @app.exception_handler(DomainError)
 def domain_error_handler(request: Request, exc: DomainError):
     return JSONResponse(
-        status_code=404 if exc.code == "task_not_found" else 403,
+        status_code=404 if exc.code.endswith("_not_found") else 403,
         content={"code": exc.code, "detail": exc.message},
     )
 

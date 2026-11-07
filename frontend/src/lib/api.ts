@@ -1,4 +1,4 @@
-import type { CalendarSummary, DailyStatistics, Task, TaskInput, WeeklyStatistics } from '../types'
+import type { CalendarSummary, DailyStatistics, GrowthHistory, GrowthSummary, RetrospectiveKind, RetrospectiveList, Task, TaskInput, WeeklyStatistics } from '../types'
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
@@ -41,4 +41,8 @@ export const api = {
   },
   daily: (date: string, signal?: AbortSignal) => request<DailyStatistics>(`/stats/daily?date=${date}`, { signal }),
   weekly: (signal?: AbortSignal) => request<WeeklyStatistics>('/stats/weekly', { signal }),
+  retrospectives: (kind: RetrospectiveKind, date?: string, signal?: AbortSignal) =>
+    request<RetrospectiveList>(`/retrospectives?kind=${kind}${date ? `&date=${date}` : ''}`, { signal }),
+  growth: (signal?: AbortSignal) => request<GrowthSummary>('/growth/summary', { signal }),
+  growthHistory: (offset = 0, signal?: AbortSignal) => request<GrowthHistory>(`/growth/history?limit=20&offset=${offset}`, { signal }),
 }

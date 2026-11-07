@@ -1,15 +1,36 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, CalendarDays, Check, ChevronRight, CircleHelp, LayoutDashboard, LoaderCircle, RefreshCw, Sprout, X } from 'lucide-react'
+import { BookOpen, CalendarDays, Check, ChevronRight, CircleHelp, LayoutDashboard, LoaderCircle, RefreshCw, Sparkles, Sprout, X } from 'lucide-react'
 import { Calendar } from './components/Calendar'
+import { CompletionSummary } from './components/CompletionSummary'
+import { RetrospectivePage } from './components/RetrospectivePage'
+import { WorldPage } from './components/WorldPage'
 import { TaskForm } from './components/TaskForm'
 import { TaskList } from './components/TaskList'
 import { WeeklyStatistics } from './components/WeeklyStatistics'
 import { useDashboard } from './hooks/useDashboard'
 import { api } from './lib/api'
-import { formatDay, rateLabel, seoulToday, shiftMonth } from './lib/dates'
-import type { Task, TaskInput } from './types'
+import { formatDay, seoulToday, shiftMonth } from './lib/dates'
+import type { RetrospectiveKind, Task, TaskInput } from './types'
+
+function currentRoute(): { view: 'dashboard' | 'retrospectives' | 'world'; kind: RetrospectiveKind } {
+  const [view, kind] = window.location.hash.slice(1).split('/')
+  return { view: view === 'retrospectives' || view === 'world' ? view : 'dashboard',
+    kind: kind === 'weekly' || kind === 'monthly' ? kind : 'daily' }
+}
 
 export default function App() {
+  const [route, setRoute] = useState(currentRoute)
+  useEffect(() => {
+    const update = () => setRoute(currentRoute())
+    window.addEventListener('hashchange', update)
+    return () => window.removeEventListener('hashchange', update)
+  }, [])
+  function navigate(view: 'dashboard' | 'retrospectives' | 'world', kind: RetrospectiveKind = 'daily') {
+    window.location.hash = view === 'retrospectives' ? `${view}/${kind}` : view
+    setRoute({ view, kind })
+  }
+  const pageLabel = route.view === 'dashboard' ? '나의 하루' : route.view === 'retrospectives' ? '나만의 회고' : '나만의 세계'
+
   const [today, setToday] = useState(seoulToday)
   const [date, setDate] = useState(today)
   const [month, setMonth] = useState(today.slice(0, 7))
@@ -52,7 +73,11 @@ export default function App() {
       <a className="brand" href="/" aria-label="Dayly 홈"><span className="brand-mark"><Check size={23} strokeWidth={2.6} /></span>dayly<span className="brand-period">.</span></a>
       <p className="brand-description">나를 위한 하루의 기록</p>
       <span className="nav-label">WORKSPACE</span>
-      <button className="nav-item active" onClick={() => selectDate(today)}><LayoutDashboard size={18} />나의 하루<ChevronRight size={15} /></button>
+      <nav className="workspace-nav" aria-label="워크스페이스">
+        <button className={`nav-item ${route.view === 'dashboard' ? 'active' : ''}`} onClick={() => { selectDate(today); navigate('dashboard') }}><LayoutDashboard size={18} />나의 하루</button>
+        <button className={`nav-item ${route.view === 'retrospectives' ? 'active' : ''}`} onClick={() => navigate('retrospectives')}><BookOpen size={18} />나만의 회고</button>
+        <button className={`nav-item ${route.view === 'world' ? 'active' : ''}`} onClick={() => navigate('world')}><Sparkles size={18} />나만의 세계</button>
+      </nav>
       <div className="sidebar-note"><Sprout size={26} strokeWidth={1.4} /><p>서두르지 않아도 괜찮아요.<br />매일 조금씩 자라는 중이니까.</p><span>MAKE ROOM FOR YOURSELF</span></div>
       <button className="help-button" onClick={() => setHelp(value => !value)} aria-expanded={help}><CircleHelp size={17} />사용 안내</button>
       {help && <div className="help-content">달력에서 날짜를 선택하고 할 일을 추가하세요. 체크하면 달성률에 반영됩니다. 상세 기록은 최근 7일과 미래 날짜를 볼 수 있어요.</div>}
@@ -60,10 +85,10 @@ export default function App() {
     </aside>
 
     <main className="main-content">
-      <header className="topbar"><div className="breadcrumb"><span>나의 워크스페이스</span><ChevronRight size={13} /><strong>나의 하루</strong></div><span className="topbar-date"><CalendarDays size={15} />{formatDay(today, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</span></header>
+      <header className="topbar"><div className="breadcrumb"><span>나의 워크스페이스</span><ChevronRight size={13} /><strong>{pageLabel}</strong></div><span className="topbar-date"><CalendarDays size={15} />{formatDay(today, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</span></header>
       <div className="page-content">
-        <section className="page-intro"><div><div className="intro-eyebrow"><span />A FRESH LITTLE START</div><h1>오늘도, 나의 속도로<span>.</span></h1><p>작은 계획을 세우고, 하나씩 채워 가는 나다운 하루.</p></div>
-          <div className="week-chip"><div className="week-chip-icon"><Sprout size={23} strokeWidth={1.5} /></div><div><span>최근 7일 달성률</span><strong>{loading ? '불러오는 중' : error ? '연결 확인 필요' : rateLabel(data?.weekly.completion_rate ?? null)}</strong></div><ArrowRight size={17} /></div></section>
+        {route.view === 'dashboard' && <><section className="page-intro"><div><div className="intro-eyebrow"><span />A FRESH LITTLE START</div><h1>오늘도, 나의 속도로<span>.</span></h1><p>작은 계획을 세우고, 하나씩 채워 가는 나다운 하루.</p></div>
+          <CompletionSummary weekly={data?.weekly} loading={loading} error={Boolean(error)} onOpenRetrospective={kind => navigate('retrospectives', kind)} /></section>
         {error ? <div className="error-banner" role="alert"><div><strong>기록을 불러오지 못했어요.</strong><p>{error}</p></div><button className="button button-quiet" onClick={refresh}><RefreshCw size={15} />다시 시도</button></div> : null}
         {mutationError && <div className="error-banner" role="alert"><p>{mutationError}</p><button className="icon-button" aria-label="오류 닫기" onClick={() => setMutationError(null)}><X size={18} /></button></div>}
         <div className="dashboard-grid">
@@ -76,6 +101,9 @@ export default function App() {
         </div>
         {!loading && !error && data && <WeeklyStatistics stats={data.weekly} selectedDate={date} onSelect={selectDate} />}
         {loading && <div className="panel statistics-loading" role="status"><LoaderCircle size={19} className="spin" />한 주의 기록을 불러오고 있어요.</div>}
+        </>}
+        {route.view === 'retrospectives' && <RetrospectivePage key={route.kind} kind={route.kind} onKindChange={kind => navigate('retrospectives', kind)} />}
+        {route.view === 'world' && <WorldPage />}
         <footer className="page-footer"><span className="footer-brand">dayly.</span><span>하루를 채우는 작은 습관</span><span>Made for your everyday.</span></footer>
       </div>
     </main>
