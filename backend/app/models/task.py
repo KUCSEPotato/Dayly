@@ -36,6 +36,8 @@ class Task(Base):
             "(NOT is_completed AND completed_at IS NULL)",
             name="ck_tasks_completion_consistent",
         ),
+        # A deleted task ID must never refer to a different task in the event log.
+        {"sqlite_autoincrement": True},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

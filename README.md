@@ -1,261 +1,388 @@
-# Dayly · Personal Todo Management
+# Dayly / Personal Todo Management
 
-FastAPI를 학습하며 실제로 사용할 수 있는 **로컬 단일 사용자 할 일 관리 MVP**입니다. 날짜별 할 일, 월간 달력, 최근 7일 기록과 달성률을 React 화면에서 관리합니다. 데이터는 실제 API와 SQLite에 저장하며, 샘플 데이터를 자동으로 넣지 않습니다.
+## Project Overview
 
-## 기능
+Dayly는 개인의 할 일을 날짜별로 관리하고, 수행 내역과 달성률을 통해 자신의 활동을 돌아볼 수 있는 **로컬 단일 사용자용 생산성 관리 웹 서비스**입니다.
 
-- 제목·설명·예정 날짜 생성/수정, 삭제, 완료 체크/해제
-- 월 이동, 오늘/선택 날짜 강조, 날짜별 완료/전체 개수 표시
-- 선택 날짜의 달성률 Progress Bar
-- 최근 7일의 일일 달성률 막대그래프와 전체 할 일 기준 주간 달성률
-- API 저장 성공 후 목록·달력·통계 재조회, 로딩/실패/재시도 처리
-- 모바일 세로 배치, 키보드 조작과 접근성 레이블, 입력을 보존하는 폼
+FastAPI를 학습하면서 실제로 사용할 수 있는 앱을 만드는 것이 개발 배경입니다. React 화면, FastAPI API, SQLite를 연결하고, Router·Schema·Model·Service의 역할을 분리해 요청 처리와 데이터 저장 흐름을 코드로 이해할 수 있도록 구성했습니다.
 
-## 기술과 구조
+현재 구현 버전은 **v0.2.1**입니다. 실시간 할 일 관리에 더해, Task Events로 과거 상태를 복원한 고정 회고와 경험치 기록을 제공합니다. 앱 실행 시 샘플 데이터를 자동으로 넣지 않습니다.
 
-Backend: Python 3.11+, FastAPI, Pydantic 2, SQLAlchemy 2.x, Alembic, SQLite, pytest.
+프로젝트 버전은 `v0.2.1`, 개발 브랜치는 `dev-v0.2.1`처럼 표기합니다. 버전별 변경 내역은 [Release Notes](#release-notes)에서 확인할 수 있습니다.
 
-Frontend: React 19, TypeScript, Vite, Tailwind CSS 4, Lucide 아이콘, Playwright. 달력과 차트는 이 규모에 맞게 직접 구현해 날짜 처리와 집계 흐름을 쉽게 읽을 수 있습니다.
+## Features
 
-```text
-backend/
-├── app/
-│   ├── main.py                # 앱 조립, CORS, 예외 → HTTP 응답
-│   ├── api/                   # Router와 Depends를 통한 주입
-│   │   ├── dependencies.py
-│   │   ├── tasks.py
-│   │   └── statistics.py
-│   ├── schemas/               # API 입출력 계약·검증
-│   │   ├── task.py
-│   │   └── statistics.py
-│   ├── models/task.py         # DB 테이블과 제약조건
-│   ├── services/              # 비즈니스 규칙·집계·트랜잭션
-│   │   ├── tasks.py
-│   │   ├── statistics.py
-│   │   └── policy.py
-│   ├── core/                  # 설정, UTC/서울 시계, 도메인 오류
-│   └── db.py                  # Engine, Base, 요청별 Session
-├── alembic/                   # 스키마 변경 이력
-├── tests/                     # 실제 마이그레이션을 적용한 임시 SQLite 테스트
-├── pyproject.toml
-└── uv.lock
-frontend/
-├── src/
-│   ├── App.tsx                # Dashboard 조립과 화면 선택 상태
-│   ├── components/            # Calendar, TaskList, TaskItem, TaskForm,
-│   │                          # DailyProgress, WeeklyStatistics
-│   ├── hooks/useDashboard.ts  # 데이터 조회·갱신·취소
-│   ├── lib/api.ts             # HTTP 호출과 오류 처리
-│   ├── lib/dates.ts           # 서울 날짜·날짜 전용 연산
-│   ├── types.ts               # API 응답 TypeScript 타입
-│   └── styles.css
-├── e2e/                       # 실제 백엔드와 통신하는 브라우저 테스트
-└── package-lock.json
+### Task Management
+
+- 날짜별 할 일 생성·조회·수정·삭제, 제목·설명·예정 날짜 관리
+- 완료 체크 및 해제, 완료 시각 기록, 완료 항목의 시각적 구분
+- 월간 달력 이동, 오늘·선택 날짜 강조, 날짜별 완료/전체 개수 표시
+- API 저장 성공 후 목록·달력·통계 갱신, 실패 시 오류 표시와 폼 입력 보존
+
+### Progress Tracking
+
+- 오늘 / 최근 7일 달성률 전환, 완료 개수와 Progress Bar
+- 선택 날짜의 달성률과 최근 7일의 일별 막대그래프
+- 전체 할 일 수를 기준으로 계산하는 주간 달성률
+
+### Retrospectives
+
+- 일간·주간·월간 고정 회고, 이전/다음 기간 이동
+- Task Events를 이용한 날짜별 종료 시점 상태 복원
+- Snapshot에 통계·완료/미완료 Task 사본·기간 XP를 저장하고 고정
+- 일별 그래프, 월간 주차별 완료 개수, 가장 많이 완료한 날짜 표시
+- 활동 기록 없음·부분 기록·복원 불가·미종료 기간 구분
+
+### Growth System
+
+- Task 최초 추적 완료에 따른 XP, 확정 일일 달성률 보너스와 일일 상한
+- 누적 XP·현재 레벨·다음 레벨 진행률·지급 내역 조회
+- 반복 완료·재조회·서버 재시작에 따른 중복 지급 방지
+
+### Workspace
+
+- **나의 하루**, **나만의 회고**, **나만의 세계** 메뉴
+- 달성률 카드에서 일간/주간 회고로 이동
+- 모바일 대응과 로딩·오류·재시도 상태
+- Forest / Ocean 소개와 Coming Soon 화면. 실제 성장 이미지·애니메이션은 개발 예정입니다.
+
+## Tech Stack
+
+| 영역 | 기술 | 역할 |
+|---|---|---|
+| Frontend | React 19, TypeScript | 컴포넌트와 화면 상태, API 응답 타입 |
+| Frontend | Vite, Tailwind CSS 4, Lucide React | 개발 서버·빌드, 스타일, 아이콘 |
+| Backend | Python 3.11+, FastAPI, Uvicorn | REST API, OpenAPI 문서, ASGI 서버 |
+| Backend | Pydantic 2, pydantic-settings | 입출력 검증·직렬화, 환경 설정 |
+| Database | SQLite, SQLAlchemy 2.x | 로컬 영속 저장과 ORM |
+| Database | Alembic | 버전별 스키마 마이그레이션 |
+| Testing | pytest, FastAPI TestClient, HTTPX | API·도메인 로직·마이그레이션 검증 |
+| Testing | Playwright, TypeScript | 실제 API를 사용하는 브라우저 테스트와 타입 검사 |
+| Infrastructure / DevOps | Docker, Docker Compose, Nginx | 실행 환경 구성, 정적 화면 제공, API 프록시 |
+| Development Tools | uv, npm | 의존성 및 잠금 파일 관리 |
+
+달력과 통계 차트는 React/CSS로 직접 구현했습니다. PostgreSQL은 향후 전환을 고려한 대상이며 현재 검증된 DB는 SQLite입니다.
+
+## Getting Started
+
+### Prerequisites
+
+- Docker 실행: Docker Desktop 또는 Docker Engine과 Docker Compose v2. 스크립트의 `docker compose … --wait`를 지원해야 합니다.
+- Docker 없이 개발: Python 3.11 이상, [uv](https://docs.astral.sh/uv/getting-started/installation/), Node.js 22.12 이상과 npm
+- 아래 명령은 별도의 `cd` 표시가 없으면 프로젝트 루트에서 실행합니다.
+
+기본값으로 실행할 때 환경 파일은 필수가 아닙니다. 설정을 바꾸려면 아래 [Environment Variables](#environment-variables)의 예시 파일을 사용하세요.
+
+### Development Server — 8081
+
+Docker를 실행한 뒤 기존 개발 스크립트를 사용합니다.
+
+```bash
+sh deploy/dev.sh
 ```
 
-## 설치와 실행
+- 서비스: http://localhost:8081
+- Swagger UI: http://localhost:8081/docs
 
-개인용으로 계속 사용하려면 아래 Docker 실행을 권장합니다. 개발할 때는 이어지는 두 터미널 실행 방법을 사용하세요.
+첫 실행은 이미지를 빌드합니다. 백엔드는 `alembic upgrade head` 성공 후 시작하며, 스크립트는 서비스 준비 상태까지 기다립니다. 같은 명령으로 코드 변경 후 재빌드할 수 있습니다.
 
-### Docker로 실행
+```bash
+sh deploy/dev.sh ps    # 상태 확인
+sh deploy/dev.sh logs  # 로그 확인
+sh deploy/dev.sh down  # 종료, 개발 데이터 유지
+```
 
-Docker Desktop을 설치하고 실행한 뒤, `compose.yaml`이 있는 **프로젝트 루트**에서 실행합니다. Python·Node.js를 별도로 설치할 필요가 없습니다.
+개발 DB는 `dayly-dev_dev-data` 볼륨에 저장합니다. 종료·컨테이너 재생성·재빌드 후에도 유지됩니다. 8081 포트를 다른 서버가 사용 중이면 해당 서버를 종료한 뒤 다시 실행하세요.
+
+직접 Compose를 사용할 때는 개발 파일 하나만 선택합니다.
+
+```bash
+docker compose -f compose.dev.yaml up -d --build --wait
+docker compose -f compose.dev.yaml down
+```
+
+`compose.yaml`과 `compose.dev.yaml`은 각각 독립 설정입니다. 두 파일을 함께 병합해 실행하지 않습니다.
+
+### Main / Production Environment — 8080
+
+기본 개인 사용 환경은 `compose.yaml`로 실행합니다. 여기서 Production은 로컬 사용 환경을 뜻하며 공개 인터넷 배포 구성은 포함하지 않습니다.
 
 ```bash
 docker compose up -d --build --wait
 ```
 
-접속: **http://localhost:8080** · API 문서: http://localhost:8080/docs
-
-첫 실행은 이미지와 패키지를 다운로드하고 프론트엔드를 빌드하므로 시간이 걸립니다. 백엔드는 시작할 때 `alembic upgrade head`를 자동 실행하며, DB 준비가 확인된 뒤 프론트엔드가 시작합니다. `--wait`는 두 서비스가 정상 상태가 될 때까지 기다립니다.
-
-나중에 다시 켜거나 끌 때도 루트에서 실행합니다.
+- 서비스: http://localhost:8080
+- Swagger UI: http://localhost:8080/docs
 
 ```bash
-# 다시 켜기 (기존 이미지 사용)
-docker compose up -d --wait
-
-# 종료 (할 일 데이터는 유지)
-docker compose down
-
-# 코드 변경 후 다시 빌드하고 실행
-docker compose up -d --build --wait
-
-# 실행 상태 / 오류 로그 확인
-docker compose ps
-docker compose logs -f
+docker compose up -d --wait  # 기존 이미지로 다시 실행
+docker compose ps          # 상태 확인
+docker compose logs -f     # 로그 확인
+docker compose down        # 종료, 데이터 유지
 ```
 
-Docker Desktop이 실행 중일 때 앱이 동작합니다. 서비스는 `restart: unless-stopped`로 설정했으므로 직접 중지하지 않은 컨테이너는 Docker 엔진이 다시 시작될 때 함께 시작합니다. Mac 재부팅 후 자동으로 사용하려면 Docker Desktop의 로그인 시 시작 옵션도 켜 두세요.
+| 설정 | 기본 개인 사용 환경 | 개발 환경 |
+|---|---|---|
+| Compose 파일 | `compose.yaml` | `compose.dev.yaml` |
+| 프로젝트 | `dayly` | `dayly-dev` |
+| 호스트 웹 포트 | `127.0.0.1:8080` | `127.0.0.1:8081` |
+| DB 볼륨 | `dayly_data` | `dayly-dev_dev-data` |
+| 컨테이너 내부 포트 | Nginx 80 / FastAPI 8000 | Nginx 80 / FastAPI 8000 |
 
-**데이터 저장**
+두 환경은 컨테이너·네트워크·DB 볼륨이 분리되어 있습니다. 호스트에는 로컬 웹 포트만 열고, Nginx가 정적 React 빌드와 `/api` 요청을 함께 제공합니다. Docker 실행에는 호스트 Python·Node.js 설치가 필요하지 않습니다.
 
-SQLite는 컨테이너 안의 `/app/data/todo.db`에 저장하고, 해당 디렉터리를 Docker의 `dayly_data` 볼륨에 연결합니다. 컨테이너 종료·재생성·이미지 재빌드 후에도 기록이 유지됩니다. **`docker compose down -v`는 볼륨과 기록까지 삭제하므로 일반 종료에는 사용하지 마세요.** 개발 서버의 `backend/data/todo.db`와는 별도 DB이며 기존 파일을 자동으로 가져오지는 않습니다.
+Docker가 실행 중이어야 서비스를 사용할 수 있습니다. `restart: unless-stopped`로 직접 중지하지 않은 컨테이너는 Docker 엔진 재시작 시 다시 시작합니다. Mac 로그인 후 자동 실행이 필요하면 Docker Desktop의 로그인 시 시작 옵션도 설정하세요.
 
-실행 중인 DB를 일관된 상태로 백업하려면 SQLite의 backup 기능을 사용합니다. 프로젝트 루트에서 다음을 실행하면 `todo-backup.db`가 생깁니다. 같은 이름의 기존 백업이 있다면 먼저 다른 곳에 보관하세요.
+### Docker 없이 개발
+
+백엔드와 프론트엔드를 각각 별도 터미널에서 실행합니다.
 
 ```bash
-docker compose exec -T backend python -c "import sqlite3; source = sqlite3.connect('/app/data/todo.db'); target = sqlite3.connect('/tmp/todo-backup.db'); source.backup(target); target.close(); source.close()"
-docker compose cp backend:/tmp/todo-backup.db ./todo-backup.db
-```
-
-8080 포트를 이미 사용 중이면 프로젝트 루트의 `.env.example`을 `.env`로 복사하고 `DAYLY_PORT=8081`처럼 바꾼 뒤 다시 실행합니다. 환경변수로 한 번 지정할 수도 있습니다.
-
-```bash
-DAYLY_PORT=8081 docker compose up -d --wait
-```
-
-**Docker 구조와 선택 이유**
-
-```text
-브라우저 → localhost:8080 → Nginx (frontend)
-                            ├── React 정적 빌드 제공
-                            └── /api → FastAPI (backend) → SQLite 볼륨
-```
-
-- `compose.yaml`: 두 서비스, DB 볼륨, 자동 재시작, 준비 상태 검사를 정의합니다.
-- `deploy/DockerFile`: 기존의 빈 파일을 Backend 이미지로 구성했습니다. `uv.lock`의 런타임 의존성만 설치하고 일반 사용자로 실행합니다.
-- `deploy/start-backend.sh`: 마이그레이션 성공 후 Uvicorn을 실행합니다. 실패 시 서버를 시작하지 않습니다.
-- `deploy/frontend.Dockerfile`: Node 단계에서 `npm ci`와 빌드를 수행하고 최종 Nginx 이미지에는 정적 산출물만 넣습니다.
-- `deploy/nginx.conf`: 화면과 API를 같은 주소로 제공하므로 별도 API 주소·CORS 설정이 필요 없습니다. 컨테이너 교체 시 Docker DNS로 새 백엔드를 찾습니다.
-- `.dockerignore`: 로컬 의존성, DB, `.env`와 테스트 산출물을 빌드에 포함하지 않습니다.
-
-호스트에 공개하는 포트는 `127.0.0.1`의 웹 포트 하나이며 백엔드는 Docker 내부에서만 접근합니다. 현재의 인증 없는 개인용 사용 범위에 맞춘 설정입니다.
-
-Docker 검증: 두 이미지 빌드와 서비스 healthcheck, Nginx 설정, API 프록시, 자동 마이그레이션, SQLite 백업을 확인했습니다. 별도 검증용 볼륨에 할 일을 저장한 뒤 `down`/`up`으로 컨테이너를 재생성해 필드·완료 시각이 유지되는지 검사했고, Chromium에서도 보존된 할 일과 100% 달성률 표시를 확인했습니다.
-
-### 개발 서버로 실행
-
-필요 도구: [uv](https://docs.astral.sh/uv/getting-started/installation/), Python 3.11 이상, Node.js 22.12 이상과 npm. 의존성 버전은 `uv.lock`, `package-lock.json`에 고정합니다.
-
-**터미널 1 — Backend**
-
-```bash
+# 터미널 1 — Backend
 cd backend
 uv sync --locked
-cp .env.example .env
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-- API: http://127.0.0.1:8000/api/tasks?date=2026-11-02 (날짜는 조회할 날짜로 변경)
-- Swagger UI: http://127.0.0.1:8000/docs
-- 기본 DB: `backend/data/todo.db` — 실행 위치와 관계없이 같은 파일을 사용합니다.
-- 테이블은 **Alembic으로 생성**합니다. 앱 실행 시 `create_all()`을 호출하지 않아 마이그레이션 누락을 숨기지 않습니다.
-
-**터미널 2 — Frontend**
-
 ```bash
+# 터미널 2 — Frontend
 cd frontend
 npm ci
 npm run dev
 ```
 
-http://127.0.0.1:5173 에 접속합니다. Vite가 `/api` 요청을 `127.0.0.1:8000`으로 전달합니다. 두 서버를 함께 실행해야 합니다.
+화면은 http://127.0.0.1:5173, API 문서는 http://127.0.0.1:8000/docs 입니다. Vite가 `/api` 요청을 백엔드로 전달합니다. 직접 실행한 DB는 실행 위치와 관계없이 `backend/data/todo.db`에 저장되며, Docker 볼륨과는 별개입니다.
 
-**환경 설정**
+### Environment Variables
 
-`backend/.env`의 `DATABASE_URL`, `CORS_ORIGINS`를 변경할 수 있습니다. `CORS_ORIGINS`는 JSON 배열입니다. 기본적으로 localhost/127.0.0.1의 5173 포트만 허용합니다. 환경변수는 `.env`보다 우선합니다.
+예시 파일을 해당 위치의 `.env`로 복사하고 필요한 값만 수정합니다. 이미 `.env`가 있다면 기존 설정을 유지하면서 필요한 키를 추가하세요. 환경변수는 백엔드 `.env` 값보다 우선합니다.
 
-프론트엔드는 필요할 때 `frontend/.env.example`을 `.env`로 복사하고 `VITE_API_BASE_URL=http://127.0.0.1:8000`을 설정합니다. 값에는 `/api`를 붙이지 않습니다. 기본 개발 설정에서는 파일을 만들 필요가 없습니다. Vite의 프록시 대상만 바꾸려면 `API_PROXY_TARGET`을 사용합니다.
+| 예시 파일 | 적용 위치와 설정 |
+|---|---|
+| [루트 .env.example](.env.example) | 기본 Docker 포트 `DAYLY_PORT`, 개발 Docker의 `XP_*` 설정 |
+| [backend/.env.example](backend/.env.example) | 직접 실행하는 API의 `DATABASE_URL`, JSON 배열 형식의 `CORS_ORIGINS`, `XP_*` |
+| [frontend/.env.example](frontend/.env.example) | 직접 개발/빌드 시 `VITE_API_BASE_URL`. 기본은 빈 값과 Vite 프록시 사용 |
 
-PostgreSQL 전환 시에는 드라이버(예: psycopg)를 설치하고 `DATABASE_URL=postgresql+psycopg://...`를 설정한 뒤 대상 DB에 마이그레이션을 적용합니다. 기존 SQLite 데이터의 이관은 별도 작업이며 이 MVP에 포함하지 않습니다.
+`VITE_API_BASE_URL`에는 `/api`를 붙이지 않습니다. 개발 프록시 대상만 바꿀 때는 `API_PROXY_TARGET`을 사용합니다. Docker에서는 같은 주소의 Nginx를 통해 화면과 API를 제공하므로 별도 API 주소나 CORS 설정이 필요하지 않습니다. `backend/.env`는 Docker 이미지에 포함되지 않으며 컨테이너 설정은 Compose의 `environment`를 사용합니다.
 
-## FastAPI 핵심 개념과 설계 이유
+개발 포트 8081은 고정입니다. 기본 개인 사용 환경의 8080이 점유되어 있으면 루트 `.env`의 `DAYLY_PORT`를 변경하거나 다음과 같이 실행할 수 있습니다.
 
-| 계층 | 책임 | 이 프로젝트에서 하지 않는 일 |
-|---|---|---|
-| **Router** (`app/api`) | HTTP 경로·상태 코드·쿼리 정의, 서비스 호출, 응답 Schema 지정 | SQL 작성, 달성률 계산 |
-| **Pydantic Schema** (`app/schemas`) | JSON 요청 검증과 응답 직렬화. 제목 trim/길이, ISO 날짜, PATCH 필드 검증 | DB 테이블 생성, 저장 |
-| **SQLAlchemy Model** (`app/models`) | Python 객체와 DB 행 매핑, 컬럼·인덱스·무결성 제약 정의 | 요청 검증, HTTP 응답 반환 |
-| **Service** (`app/services`) | 조회 기간, 완료 시각, CRUD 트랜잭션, 달성률 계산 | FastAPI Request/Response 사용 |
-| **DB/Configuration** | Engine 연결, 요청별 Session 수명, 환경변수 로딩 | 화면 상태 관리 |
-
-Schema와 Model을 분리하면 클라이언트가 `id`, `created_at`, `completed_at` 같은 서버 관리 필드를 임의 변경할 수 없습니다. 생성·수정·응답 Schema도 각각 분리했습니다. `extra="forbid"`로 정의하지 않은 입력 필드를 거절합니다.
-
-예를 들어 완료 체크의 흐름은 다음과 같습니다.
-
-```mermaid
-sequenceDiagram
-    participant UI as React TaskItem
-    participant R as tasks Router
-    participant S as TaskUpdate Schema
-    participant V as TaskService
-    participant DB as SQLAlchemy / SQLite
-    UI->>R: PATCH /api/tasks/1 {is_completed: true}
-    R->>S: 요청 검증 (FastAPI)
-    R->>V: update(1, data)
-    V->>DB: Task 조회, 완료 상태·시각 변경, commit
-    DB-->>V: 저장된 Task
-    V-->>R: Task 객체
-    R-->>UI: TaskRead로 직렬화 (200)
-    UI->>R: 목록·달력·통계 재조회
+```bash
+DAYLY_PORT=8082 docker compose up -d --wait
 ```
 
-- **`APIRouter`**: 기능별 경로를 모아 `main.py`의 `include_router()`로 연결합니다. 앱 설정과 개별 엔드포인트를 분리합니다.
-- **`Depends`**: Session과 서울 기준 오늘을 서비스에 주입합니다. 테스트에서는 `dependency_overrides`로 임시 DB와 고정 날짜를 주입합니다.
-- **`response_model`**: ORM 객체를 `TaskRead`로 변환하고 외부에 제공할 필드와 OpenAPI 문서를 명확히 합니다. `from_attributes=True`가 ORM 속성 읽기를 허용합니다.
-- **동기 Router + 동기 Session**: 이 작은 SQLite 앱에서는 구성이 단순한 동기 ORM을 선택했습니다. FastAPI의 동기 엔드포인트 실행 방식에 맞췄으며, 하나의 Session을 요청 간 공유하지 않습니다.
-- **Service가 쓰기 트랜잭션 소유**: 규칙 확인과 상태 변경을 한 번의 commit으로 저장합니다. 실패하면 Session 의존성이 rollback하고 종료합니다. 별도 Repository 계층은 현재 규모에 불필요한 간접화를 만들므로 추가하지 않았습니다.
-- **도메인 오류와 HTTP 분리**: Service의 `DomainError`를 `main.py`에서 403/404로 변환합니다. Service를 HTTP 없이 테스트하거나 다른 호출자에서 재사용할 수 있습니다.
+XP 수치는 **임시 정책**입니다. 아래 설정값은 새 지급 건에 적용되고 기존 지급 내역·Snapshot은 재계산하지 않습니다.
 
-공식 참고: [FastAPI APIRouter](https://fastapi.tiangolo.com/tutorial/bigger-applications/), [SQLAlchemy Session](https://docs.sqlalchemy.org/en/20/orm/session_basics.html).
-
-## 날짜·통계·상태 정책
-
-- `scheduled_date`는 시간대가 없는 `YYYY-MM-DD` 날짜입니다. `created_at`, `updated_at`, `completed_at`은 UTC로 저장하고 UTC 오프셋이 있는 ISO 8601 문자열로 반환합니다. SQLite의 시간대 메타데이터 손실은 `UTCDateTime` 타입이 복원합니다.
-- ‘오늘’은 백엔드 `Asia/Seoul` 기준입니다. 프론트엔드도 같은 기준을 사용하고 30초마다 날짜 변경을 확인합니다. 기기의 로컬 시간대로 날짜가 밀리지 않도록 날짜 전용 연산은 UTC를 사용합니다.
-- 최근 7일 범위는 **오늘−6일 ≤ 예정 날짜 ≤ 오늘**입니다. 미래 일정은 상세 조회·관리가 가능합니다.
-- 오래된 데이터는 보존하고 월간 달력에는 완료/전체 집계를 제공합니다. 상세 조회와 일일 통계는 403입니다. 제한을 우회해 과거 상세를 반환하지 않도록 오래된 항목의 수정·삭제와 그 날짜로의 생성·이동도 제한하는 정책을 선택했습니다.
-- 일일 달성률 = 완료 / 전체 × 100. 주간 달성률 = 7일간 완료 합계 / 전체 합계 × 100. **일별 비율의 평균을 사용하지 않습니다.**
-- 할 일이 없으면 비율은 `null`이며 UI는 ‘기록 없음’으로 표시합니다. 할 일이 있지만 모두 미완료라면 `0`입니다. API는 소수 둘째 자리까지 계산하고 UI는 정수 반올림으로 표시합니다.
-- 완료 체크 시 UTC 시각을 기록하고 해제 시 `null`로 지웁니다. 반복된 완료 요청은 최초 완료 시각을 유지합니다. DB 제약도 상태와 완료 시각의 일관성을 보장합니다.
-- 통계는 예정 날짜 기준으로 SQL 집계합니다. 별도 캐시 없이 현재 DB 상태를 사용하므로 생성·삭제·날짜 이동 후에도 계산이 일치합니다.
-- UI는 서버 저장이 성공한 뒤 다시 조회합니다. 저장 실패 시 완료 표시를 먼저 바꾸지 않으며, 폼 입력을 보존합니다. 날짜를 빠르게 바꾸면 이전 조회를 취소해 늦은 응답이 다른 날짜에 표시되는 것을 방지합니다. 재조회 자체가 실패하면 오류와 재시도 버튼을 표시합니다.
-
-## 주요 API
-
-| Method | Endpoint | 입력/결과 |
+| 환경변수 | 기본값 | 의미 |
 |---|---|---|
-| GET | `/api/tasks?date=YYYY-MM-DD` | 날짜별 할 일 배열 |
-| POST | `/api/tasks` | `title`, `scheduled_date`, 선택 `description` → 201 |
-| PATCH | `/api/tasks/{id}` | 제목·설명·날짜·`is_completed` 중 변경할 필드 → 200 |
-| DELETE | `/api/tasks/{id}` | 삭제 → 204, 본문 없음 |
-| GET | `/api/calendar?year=2026&month=11` | 모든 날짜의 완료/전체/미완료 개수·비율 |
-| GET | `/api/stats/daily?date=YYYY-MM-DD` | 해당 날짜의 개수·달성률 |
-| GET | `/api/stats/weekly` | 최근 7일 일별 기록과 가중 달성률 |
+| `XP_TASK_POINTS` | 10 | 최초 추적 완료 XP |
+| `XP_DAILY_CAP` | 100 | 완료 XP와 보너스를 합한 하루 상한 |
+| `XP_BONUS_HALF` | 10 | 확정 일일 달성률 50% 이상 보너스 |
+| `XP_BONUS_FULL` | 20 | 100% 보너스. 50% 보너스와 중복하지 않음 |
+| `XP_LEVEL_STEP` | 100 | 다음 레벨 필요량의 증가 단위 |
 
-잘못된 입력은 422, 없는 항목은 404, 과거 상세 제한은 403, 저장소 오류는 503입니다. 도메인 오류는 `{"code":"...","detail":"..."}` 형식, 입력 검증 오류는 FastAPI 기본 `detail` 배열 형식입니다.
+## Project Structure
 
-PATCH에서 생략한 필드는 유지됩니다. `description: null`은 설명을 지우고, 제목·날짜·완료 상태의 명시적 `null`과 빈 PATCH는 거절합니다.
+```text
+backend/
+├── app/
+│   ├── api/          # Tasks, Calendar/Stats, Retrospectives, Growth Router와 의존성
+│   ├── schemas/      # Pydantic 요청·응답 계약
+│   ├── models/       # Task, Event, Snapshot, XP 원장 등 SQLAlchemy 모델
+│   ├── services/     # CRUD, 과거 복원, 회고 집계, XP·레벨, 트랜잭션
+│   ├── core/         # 설정, UTC/서울 시계, 회고 기간, 도메인 오류
+│   ├── db.py         # Engine, Base, 요청별 Session
+│   └── main.py       # 앱 조립, CORS, 예외 응답
+├── alembic/          # 스키마 변경 및 기존 데이터 마이그레이션
+├── tests/            # pytest와 브라우저 테스트 전용 데이터 준비
+├── pyproject.toml
+└── uv.lock
+frontend/
+├── src/
+│   ├── components/   # 달력·Task·달성률 카드·회고·세계 화면
+│   ├── hooks/        # Dashboard 데이터 조회와 요청 취소
+│   ├── lib/          # API 호출과 날짜 처리
+│   ├── App.tsx       # Workspace와 해시 기반 화면 이동
+│   ├── types.ts      # API 응답 타입
+│   └── styles.css
+├── e2e/              # 실제 API와 연결한 Playwright 테스트
+└── package-lock.json
+deploy/               # Backend/Frontend Dockerfile, Nginx, 실행 스크립트
+docs/releases/        # 버전별 패치노트
+compose.yaml          # 기본 개인 사용 환경
+compose.dev.yaml      # 분리된 개발 환경
+```
 
-## 테스트와 빌드
+### FastAPI 핵심 개념과 설계 이유
 
-**Backend**
+| 계층 | 책임 | 예시 |
+|---|---|---|
+| Router | 경로·HTTP 상태·쿼리 정의, 검증된 입력을 Service에 전달 | `api/tasks.py`, `api/retrospectives.py` |
+| Pydantic Schema | 요청 검증과 응답 직렬화, 공개 필드 정의 | `TaskCreate`, `TaskUpdate`, `TaskRead` |
+| SQLAlchemy Model | 테이블·컬럼·인덱스·DB 제약과 객체 매핑 | `Task`, `TaskEvent`, `RetrospectiveSnapshot` |
+| Service | 완료 시각, 조회 정책, 이벤트·회고·XP 규칙과 트랜잭션 | `TaskService`, `TaskHistoryService`, `GrowthService` |
+| DB / Configuration | 연결과 Session 수명, 환경 설정 | `db.py`, `core/config.py` |
+
+`APIRouter`를 `main.py`의 `include_router()`로 연결하고, `Depends`로 요청별 Session과 날짜·시각을 주입합니다. `response_model`과 `from_attributes=True`는 ORM 객체를 정해진 응답 형식으로 변환합니다. 생성·수정·응답 Schema를 분리해 서버 관리 필드의 임의 변경을 막습니다.
+
+완료 체크는 **입력 검증 → Router → TaskService → Task 변경과 Event 삽입 → 같은 트랜잭션으로 commit → 응답 → 화면 재조회** 순서로 처리합니다. 실패 시 rollback합니다. Service는 HTTP 객체를 사용하지 않고 도메인 오류를 발생시키며, `main.py`가 이를 HTTP 응답으로 바꿉니다.
+
+동기 ORM에 맞춰 동기 Router를 사용하고 Session을 요청 간 공유하지 않습니다. 현재 규모에서는 별도 Repository 계층을 추가하지 않고 Service에서 SQLAlchemy를 사용합니다.
+
+학습 참고: [FastAPI APIRouter](https://fastapi.tiangolo.com/tutorial/bigger-applications/) · [SQLAlchemy Session](https://docs.sqlalchemy.org/en/20/orm/session_basics.html).
+
+## API Overview
+
+개발 Docker의 Swagger UI는 http://localhost:8081/docs 입니다. 기본 환경은 http://localhost:8080/docs, 직접 실행은 http://127.0.0.1:8000/docs 를 사용합니다. 각 서버의 `/openapi.json`에서도 API 정의를 확인할 수 있습니다.
+
+### Task API
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/tasks?date=YYYY-MM-DD` | 해당 날짜의 할 일 목록 |
+| POST | `/api/tasks` | 제목·예정 날짜·선택 설명으로 생성, 201 반환 |
+| PATCH | `/api/tasks/{id}` | 제목·설명·예정 날짜·완료 여부 변경 |
+| DELETE | `/api/tasks/{id}` | 삭제, 본문 없는 204 반환 |
+| GET | `/api/calendar?year=2026&month=11` | 월간 날짜별 완료/전체 현황 |
+| GET | `/api/stats/daily?date=YYYY-MM-DD` | 특정 날짜의 실시간 달성률 |
+| GET | `/api/stats/weekly` | 오늘을 포함한 최근 7일 실시간 통계 |
+
+제목은 공백 제거 후 1~200자, 설명은 최대 5,000자입니다. PATCH에서 생략한 필드는 유지하고 `description: null`로 설명을 지웁니다. 제목·날짜·완료 상태의 명시적 null, 빈 PATCH, 정의되지 않은 입력 필드는 거절합니다.
+
+### Retrospective API
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/retrospectives` | 최근 종료된 세 종류의 누락 Snapshot 생성 후 저장된 회고 목록 |
+| GET | `/api/retrospectives?kind=daily` | 종류별 목록과 최근 종료 기간 회고 |
+| GET | `/api/retrospectives?kind=weekly&date=2026-11-02` | 지정 날짜가 속한 기간의 회고·상태 |
+| GET | `/api/retrospectives/{id}` | 저장된 Snapshot 상세, 재계산 없음 |
+
+`kind`는 `daily`, `weekly`, `monthly`입니다. `date` 지정 시 `kind`가 필요합니다. 목록 응답은 `items`, `total`, `requested_period`, `status`를 포함하며, 회고 목록 조회는 필요한 종료 기간 Snapshot을 저장할 수 있습니다.
+
+### Growth API
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/growth/summary` | 누락 XP 동기화 후 누적 XP·레벨·다음 레벨 진행 상태·정책 |
+| GET | `/api/growth/history` | 누락 XP 동기화 후 지급 내역 |
+
+회고 목록과 XP 내역은 `limit`(1~100), `offset`(0 이상)을 지원합니다. 잘못된 입력은 422, 없는 항목은 404, 과거 Task 상세 제한은 403, 저장소 오류는 503입니다. 도메인 오류는 `code`와 `detail`, 입력 검증 오류는 FastAPI의 `detail` 배열을 사용합니다. 회고 종류 없이 날짜만 요청하는 경우에는 문자열 `detail`과 422를 반환합니다.
+
+## Database & Data Management
+
+| 데이터 | 역할과 보존 방식 |
+|---|---|
+| `tasks` | 현재 할 일 상태. 완료 체크 시 UTC 완료 시각을 저장하고 해제하면 null로 초기화 |
+| `task_events` | 생성·수정·완료·해제·삭제·BASELINE의 전체 before/after 사본. Task 삭제 후에도 유지하는 append-only 이력 |
+| `retrospective_snapshots` | 종류·기간·고정 통계·Task 사본·기간 XP. 같은 종류와 기간에는 하나만 저장하며 생성 후 변경하지 않음 |
+| `experience_grants` | XP Ledger. 지급 원인·Task/이벤트·귀속 날짜·지급량·고유 키를 보관하고 중복 지급 방지 |
+| `history_coverage` | 신뢰할 수 있는 이력 추적 시작 시각. 활동 없음과 복원 불가를 구분하는 기준 |
+
+### 날짜와 달성률
+
+예정 날짜는 `YYYY-MM-DD`, 타임스탬프는 UTC로 저장·반환합니다. 오늘과 회고 날짜 경계는 `Asia/Seoul` 기준입니다. SQLite가 잃는 시간대 메타데이터는 `UTCDateTime`이 복원합니다.
+
+실시간 Task 상세와 일일 통계는 오늘−6일부터 미래 날짜까지 제공합니다. 오래된 Task 데이터는 삭제하지 않고 달력 요약으로 보존합니다. 같은 제한은 오래된 Task의 수정·삭제 및 해당 날짜로의 생성·이동에도 적용합니다. **고정 회고 조회에는 이 7일 제한을 적용하지 않습니다.**
+
+달성률은 `완료 / 전체 × 100`이며, 주간·월간 비율도 완료 합계 / 전체 합계를 사용합니다. 일별 비율을 단순 평균하지 않습니다. 할 일이 없으면 비율은 null, 할 일이 있지만 완료가 없으면 0%입니다. API는 소수 둘째 자리까지, UI는 정수 반올림으로 표시합니다.
+
+고정 회고는 일간 하루, 월요일~일요일 한 주, 달력의 한 달을 대상으로 합니다. 각 날짜 종료 시각 직전의 상태를 복원해 합산하고, 기간이 종료된 뒤 누락 Snapshot을 생성합니다. 모든 기간은 **[시작, 종료)**이며 `period_end`는 미포함 종료 날짜입니다. 대시보드의 최근 7일과 주간 고정 회고는 집계 기간이 다릅니다.
+
+| 회고 상태 | 의미 |
+|---|---|
+| `ready` | 이력이 충분하고 계획이 있었음. 완료 0개는 정상 0% |
+| `no_activity` | 이력이 충분하지만 계획이 없었음 |
+| `partial` | 추적 이전 시간이 포함되어 일부 기록만 확인 가능 |
+| `unavailable` | 전체 기간이 추적 이전이라 정확한 복원 불가 |
+| `not_ended` | 아직 종료되지 않아 Snapshot을 생성하지 않음 |
+
+XP는 Task의 최초 추적 완료에 한 번 지급하고 완료 해제·삭제 시 회수하지 않습니다. BASELINE에서 이미 완료된 항목에는 과거 완료 보상을 추정하지 않습니다. 성장 API 조회와 새 Snapshot 생성 시 누락된 지급을 동기화합니다. 기본 누적 레벨 경계는 0 / 100 / 300 / 600 XP이며, 자세한 계산·중복 방지·보너스 귀속 규칙은 [v0.2.1 설계](docs/releases/v0.2.1.md)를 참고하세요.
+
+### 마이그레이션과 백업
+
+Alembic `0001`은 Task, `0002`는 Task Events와 기존 Task의 BASELINE, `0003`은 Snapshot·XP 원장·추적 시작 정보를 구성합니다. 기존 ID와 데이터를 보존하며, 앱에서 `create_all()`로 마이그레이션 누락을 숨기지 않습니다. 변경 전에는 대상 DB를 백업하세요. downgrade는 이력 테이블을 제거할 수 있으므로 일반 종료에 사용하지 않습니다.
+
+Docker DB 파일은 `/app/data/todo.db`입니다. `down`은 볼륨을 유지하지만 **`down -v`는 데이터까지 삭제**합니다. Docker 기본/개발 볼륨과 직접 실행 DB 사이의 자동 복사·동기화는 없습니다.
+
+실행 중인 개발 DB의 일관된 백업은 SQLite backup 기능을 사용합니다. 기존 `todo-backup.db`가 있다면 다른 이름으로 복사하세요.
+
+```bash
+docker compose -f compose.dev.yaml exec -T backend python -c "import sqlite3; source = sqlite3.connect('/app/data/todo.db'); target = sqlite3.connect('/tmp/todo-backup.db'); source.backup(target); target.close(); source.close()"
+docker compose -f compose.dev.yaml cp backend:/tmp/todo-backup.db ./todo-backup.db
+```
+
+기본 개인 사용 환경은 위 명령에서 `-f compose.dev.yaml`을 빼고 실행합니다. 실제 환경 파일, 개인키·계정 설정, DB·백업·로그는 `.gitignore`로 제외하며 공유용 설정 예시는 유지합니다.
+
+## Testing
+
+### Backend — pytest
 
 ```bash
 cd backend
+uv sync --locked
 uv run pytest -q
-uv run alembic check
 ```
 
-pytest는 테스트마다 임시 SQLite 파일에 실제 Alembic 마이그레이션을 적용합니다. 개인 DB를 초기화하지 않습니다. CRUD, 저장 지속성, 입력 오류, 완료 시각, 통계 변경, 가중 비율, 7일 경계, 과거 제한/보존, 미래 날짜, 윤년, 서울 자정, DB 제약과 마이그레이션 왕복을 검사합니다. `alembic check`는 먼저 `alembic upgrade head`를 실행한 개발 DB에서 모델과 마이그레이션 차이를 확인합니다.
+각 테스트는 임시 SQLite 파일에 실제 마이그레이션을 적용합니다. Task CRUD, 입력 검증, 통계, 이벤트·rollback·과거 복원, 회고 불변성, XP 정책·동시 요청 등을 검증하며 개인 DB를 초기화하지 않습니다.
 
-**Frontend**
+### Frontend / E2E — Playwright
 
 ```bash
 cd frontend
-npm run build
+npm ci
 npx playwright install chromium
 npm run test:e2e
 ```
 
-빌드는 엄격한 TypeScript 검사 후 `dist/`를 생성합니다. Playwright는 **별도의 임시 DB**, 백엔드 8001 포트, 프론트엔드 5174 포트를 사용합니다. 두 테스트용 포트는 비어 있어야 합니다. 기본 브라우저 테스트는 실제 API로 생성·완료/해제·새로고침·수정·날짜 이동·삭제를 검증하며, 저장/조회 실패, 기간 제한, 모바일 가로 넘침도 확인합니다. 스크린샷과 실패 trace는 `frontend/test-results/`에 생성합니다.
+기본 설정은 별도 임시 DB, 백엔드 8001·프론트엔드 5174 포트를 사용합니다. 테스트 전용 과거 데이터를 넣어 Dashboard·회고·성장 화면과 실제 API를 검증합니다. 이 데이터 준비는 앱의 정상 실행에 포함되지 않습니다. 지정된 포트는 비어 있어야 합니다.
 
-구현 검증 결과: **pytest 37개 통과, Playwright 4개 통과, TypeScript/Vite 빌드 성공, `alembic check` 차이 없음**. 브라우저에서도 실제 10개 중 7개 완료 시 일일·주간 70% 표시와 완료 저장 실패 시 기존 상태 유지를 확인했습니다.
+`E2E_BASE_URL`을 지정하면 해당 서버를 사용합니다. 테스트가 Task를 생성·삭제하므로 개인 기록이 없는 별도 검증 서버에만 지정하세요. 스크린샷과 실패 trace는 `frontend/test-results/`에 생성되며 Git에서 제외됩니다.
 
-## 범위와 제약
+### Build / Migration 검증
 
-로컬 단일 사용자용이며 인증, 다중 사용자 권한, 반복 일정, 알림, 외부 배포는 포함하지 않습니다. 기본 서버는 loopback에만 바인딩합니다. 공개 인터넷에 배포하려면 먼저 인증·접근 제어를 구현해야 하며, 인증 없이 개인 데이터 API를 공개하면 안 됩니다. CORS는 인증을 대신하지 않습니다.
+```bash
+cd frontend
+npm run build
+```
 
-공개 인터넷 배포 구성과 PostgreSQL의 실제 운영 검증은 포함하지 않습니다. 실행 방법은 위의 Docker Compose 또는 두 개발 서버 방식입니다. 프론트엔드 빌드 결과만 열어서는 API가 제공되지 않습니다.
+엄격한 TypeScript 검사 후 Vite가 `frontend/dist/`를 생성합니다. 빌드 결과만 열어서는 API가 제공되지 않으며 위 Docker 또는 개발 서버 방식으로 함께 실행해야 합니다.
+
+```bash
+cd backend
+uv run alembic upgrade head
+uv run alembic check
+```
+
+`upgrade head`는 선택한 DB에 마이그레이션을 적용하고, `check`는 적용된 스키마와 모델의 차이를 확인합니다. 실행 대상은 `DATABASE_URL` 또는 기본 개발 DB이므로 대상 데이터를 백업한 뒤 사용하세요. Docker 개발 DB의 일치 검사만 수행하려면 루트에서 다음을 실행합니다.
+
+```bash
+docker compose -f compose.dev.yaml exec -T backend alembic check
+```
+
+버전별 검증 결과와 상세 시나리오는 [v0.2.1 패치노트](docs/releases/v0.2.1.md#testing)를 참고하세요.
+
+## Release Notes
+
+| 버전 | 핵심 변경 사항 |
+|---|---|
+| [v0.1.0](docs/releases/v0.1.0.md) | Task CRUD, 달력, 일일·최근 7일 통계와 Docker 실행 |
+| [v0.2.0](docs/releases/v0.2.0.md) | Task Events, 과거 복원, BASELINE, 달성률 전환과 개발 환경 분리 |
+| [v0.2.1](docs/releases/v0.2.1.md) | 고정 회고 Snapshot, XP·레벨 원장, 회고/세계 워크스페이스 |
+
+## Roadmap
+
+**v1.0 — Growth Worlds (개발 예정)**
+
+- Forest: 완료한 할 일에 따라 성장하는 숲
+- Ocean: 성장하는 고래와 해양 생태계
+- 성장 단계별 시각적 변화와 애니메이션
+- 세계관과 고정 회고 시스템 연동
+- 연간 성장 기록과 보관함
+
+현재는 두 테마의 소개 화면과 공통 XP·레벨 데이터까지 구현했습니다. 실제 테마별 성장 연출은 포함하지 않습니다.
+
+이력 추적 이전의 정확한 상태 복원, 대규모 장기 이력의 증분 처리와 PostgreSQL 실서버 검증은 남아 있습니다. PostgreSQL 전환 시에는 별도 드라이버·연결 설정·데이터 이관 및 검증이 필요합니다.
+
+이 프로젝트는 인증과 다중 사용자 권한이 없는 로컬 개인용 서비스입니다. 공개 인터넷에 배포하려면 인증·접근 제어가 필요하며 CORS는 이를 대신하지 않습니다. 반복 일정·알림과 공개 배포 구성은 현재 포함하지 않습니다.

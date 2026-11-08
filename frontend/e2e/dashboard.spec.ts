@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seoulToday } from '../src/lib/dates'
+import { addDays, seoulToday } from '../src/lib/dates'
 
 test('real API: create, complete, persist, edit, reschedule, and delete', async ({ page }, testInfo) => {
   await page.goto('/')
@@ -14,11 +14,11 @@ test('real API: create, complete, persist, edit, reschedule, and delete', async 
   await expect(page.getByText('Router → Service → Model')).toBeVisible()
   await page.getByRole('checkbox', { name: 'FastAPI 계층 학습 완료' }).click()
   await expect(page.getByRole('checkbox', { name: 'FastAPI 계층 학습 완료' })).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100')
+  await expect(page.getByRole('progressbar', { name: '선택한 날짜 달성률' })).toHaveAttribute('aria-valuenow', '100')
   await page.reload()
   await expect(page.getByRole('checkbox', { name: 'FastAPI 계층 학습 완료' })).toHaveAttribute('aria-checked', 'true')
   await page.getByRole('checkbox', { name: 'FastAPI 계층 학습 완료' }).click()
-  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
+  await expect(page.getByRole('progressbar', { name: '선택한 날짜 달성률' })).toHaveAttribute('aria-valuenow', '0')
   await page.getByRole('button', { name: 'FastAPI 계층 학습 수정' }).click()
   await dialog.getByLabel('할 일 제목').fill('SQLAlchemy 실습')
   await dialog.getByRole('button', { name: '변경 저장' }).click()
@@ -91,7 +91,7 @@ test('70% daily and weekly charts reflect real tasks, failed completion preserve
       }
     }
     await page.goto('/')
-    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '70')
+    await expect(page.getByRole('progressbar', { name: '선택한 날짜 달성률' })).toHaveAttribute('aria-valuenow', '70')
     await expect(page.locator('.weekly-rate')).toHaveText('70%')
     await expect(page.getByRole('button', { name: new RegExp(`^${seoulToday()}, 7/10개 완료, 70%`) })).toBeVisible()
     await page.route(`**/api/tasks/${ids[7]}`, route => route.fulfill({
@@ -100,7 +100,7 @@ test('70% daily and weekly charts reflect real tasks, failed completion preserve
     await page.getByRole('checkbox', { name: '통계 확인 8 완료', exact: true }).click()
     await expect(page.getByRole('alert')).toContainText('완료 저장 실패')
     await expect(page.getByRole('checkbox', { name: '통계 확인 8 완료', exact: true })).toHaveAttribute('aria-checked', 'false')
-    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '70')
+    await expect(page.getByRole('progressbar', { name: '선택한 날짜 달성률' })).toHaveAttribute('aria-valuenow', '70')
     await page.screenshot({ path: testInfo.outputPath('statistics-desktop.png'), fullPage: true })
     await page.setViewportSize({ width: 390, height: 844 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
@@ -108,4 +108,60 @@ test('70% daily and weekly charts reflect real tasks, failed completion preserve
   } finally {
     for (const id of ids) await page.request.delete(`/api/tasks/${id}`)
   }
+})
+
+test('summary switches between weighted week and today independently of calendar, and refreshes after completion', async ({ page }, testInfo) => {
+  const ids: number[] = []
+  async function create(title: string, date: string, complete: boolean) {
+    const response = await page.request.post('/api/tasks', { data: { title, scheduled_date: date } })
+    expect(response.status()).toBe(201)
+    const task: { id: number } = await response.json()
+    ids.push(task.id)
+    if (complete) expect((await page.request.patch(`/api/tasks/${task.id}`, { data: { is_completed: true } })).ok()).toBe(true)
+  }
+  try {
+    const today = seoulToday()
+    const yesterday = addDays(today, -1)
+    await create('어제 완료', yesterday, true)
+    await create('오늘 완료', today, true)
+    await create('오늘 진행 중', today, false)
+    await page.goto('/')
+    const summary = page.getByRole('region', { name: '달성률 요약' })
+    await expect(summary.getByRole('button', { name: '최근 7일', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(summary.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '66.67')
+    await expect(summary.getByLabel('최근 7일 완료 및 전체 할 일')).toHaveText('2 / 3')
+    const navigations: string[] = []
+    page.on('framenavigated', frame => { if (frame === page.mainFrame()) navigations.push(frame.url()) })
+    await summary.getByRole('button', { name: '오늘', exact: true }).click()
+    await expect(summary.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50')
+    await expect(summary.getByLabel('오늘 완료 및 전체 할 일')).toHaveText('1 / 2')
+    await page.getByRole('group', { name: '날짜 선택' }).getByRole('button', { name: new RegExp(`^${yesterday}`) }).click()
+    await expect(page.getByRole('progressbar', { name: '선택한 날짜 달성률' })).toHaveAttribute('aria-valuenow', '100')
+    await expect(summary.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50')
+    await page.getByRole('button', { name: '오늘로' }).click()
+    await page.getByRole('checkbox', { name: '오늘 진행 중 완료', exact: true }).click()
+    await expect(summary.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100')
+    await expect(summary.getByLabel('오늘 완료 및 전체 할 일')).toHaveText('2 / 2')
+    await summary.getByRole('button', { name: '최근 7일', exact: true }).click()
+    await expect(summary.getByLabel('최근 7일 완료 및 전체 할 일')).toHaveText('3 / 3')
+    expect(navigations).toEqual([])
+    await page.screenshot({ path: testInfo.outputPath('summary-desktop.png'), fullPage: true })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await summary.getByRole('button', { name: '오늘', exact: true }).click()
+    await expect(summary.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('summary-mobile.png'), fullPage: true })
+  } finally {
+    for (const id of ids) await page.request.delete(`/api/tasks/${id}`)
+  }
+})
+
+test('empty summary shows no record for both periods', async ({ page }) => {
+  await page.goto('/')
+  const summary = page.getByRole('region', { name: '달성률 요약' })
+  await expect(summary.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '기록 없음')
+  await expect(summary.getByLabel('최근 7일 완료 및 전체 할 일')).toHaveText('0 / 0')
+  await summary.getByRole('button', { name: '오늘', exact: true }).click()
+  await expect(summary.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '기록 없음')
+  await expect(summary.getByLabel('오늘 완료 및 전체 할 일')).toHaveText('0 / 0')
 })
