@@ -119,6 +119,7 @@ docker compose up -d --wait  # 기존 이미지로 다시 실행
 docker compose ps          # 상태 확인
 docker compose logs -f     # 로그 확인
 docker compose down        # 종료, 데이터 유지
+docker compose down -v     # 종료, 기록 삭제 (데이터가 삭제되기 때문에 권장하지 않음.)
 ```
 
 | 설정 | 기본 개인 사용 환경 | 개발 환경 |
