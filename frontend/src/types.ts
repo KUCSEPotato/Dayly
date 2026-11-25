@@ -1,3 +1,5 @@
+export interface Tag { id: number; name: string; color: string }
+
 export interface Task {
   id: number
   title: string
@@ -7,12 +9,14 @@ export interface Task {
   created_at: string
   updated_at: string
   completed_at: string | null
+  tags?: Tag[] // Snapshots written before v0.2.2 have no tags field.
 }
 
 export interface TaskInput {
   title: string
   description: string | null
   scheduled_date: string
+  tag_ids?: number[]
 }
 
 export interface DailyStatistics {

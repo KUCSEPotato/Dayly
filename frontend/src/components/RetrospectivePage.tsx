@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BookOpen, Check, ChevronLeft, ChevronRight, Circle, Clock3, LoaderCircle, RefreshCw, Sparkles } from 'lucide-react'
 import { api } from '../lib/api'
+import { TaskTags } from './TaskTags'
 import { addDays, asDate, formatDay, rateLabel, seoulToday } from '../lib/dates'
 import type { RetrospectiveKind, RetrospectiveList, Task } from '../types'
 
@@ -17,8 +18,8 @@ function SnapshotTasks({ tasks, completed }: { tasks: Task[]; completed: boolean
   return <section className="panel retrospective-tasks">
     <h2>{completed ? '완료한 일' : '미완료한 일'} <span>{tasks.length}</span></h2>
     {tasks.length ? <ul>{tasks.map((task, index) => <li key={`${task.id}-${task.scheduled_date}-${index}`}>
-      {completed ? <Check size={16} /> : <Circle size={14} />}<div><strong>{task.title}</strong>
-        {task.description && <p>{task.description}</p>}<span>{formatDay(task.scheduled_date, { month: 'long', day: 'numeric' })} 예정</span></div>
+      {completed ? <Check size={16} /> : <Circle size={14} />}<div><TaskTags tags={task.tags} /><strong>{task.title}</strong>
+        {task.description && <p>{task.description}</p>}<span className="snapshot-scheduled-date">{formatDay(task.scheduled_date, { month: 'long', day: 'numeric' })} 예정</span></div>
     </li>)}</ul> : <p className="quiet-empty">이 기간에 해당하는 항목이 없어요.</p>}
   </section>
 }

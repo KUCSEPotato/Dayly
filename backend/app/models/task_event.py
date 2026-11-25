@@ -47,6 +47,7 @@ class TaskEvent(Base):
     before_state: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
     after_state: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
     occurred_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    change_reason: Mapped[str | None] = mapped_column(String(32))
 
 
 @event.listens_for(TaskEvent, "before_update")

@@ -5,11 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api import growth, retrospectives, statistics, tasks
+from app.api import growth, retrospectives, statistics, tags, tasks
 from app.core.config import get_settings
 from app.core.errors import DomainError
 
-app = FastAPI(title="Dayly API", version="0.2.1", description="개인용 할 일 · 고정 회고 · 성장 기록")
+app = FastAPI(title="Dayly API", version="0.2.2", description="개인용 할 일 · 태그 · 고정 회고 · 성장 기록")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origins,
@@ -18,6 +18,7 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 app.include_router(tasks.router, prefix="/api")
+app.include_router(tags.router, prefix="/api")
 app.include_router(statistics.router, prefix="/api")
 app.include_router(retrospectives.router, prefix="/api")
 app.include_router(growth.router, prefix="/api")

@@ -1,4 +1,4 @@
-import type { CalendarSummary, DailyStatistics, GrowthHistory, GrowthSummary, RetrospectiveKind, RetrospectiveList, Task, TaskInput, WeeklyStatistics } from '../types'
+import type { CalendarSummary, DailyStatistics, GrowthHistory, GrowthSummary, RetrospectiveKind, RetrospectiveList, Tag, Task, TaskInput, WeeklyStatistics } from '../types'
 
 const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
@@ -30,11 +30,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  tags: (signal?: AbortSignal) => request<Tag[]>('/tags', { signal }),
+  createTag: (name: string, color: string) => request<Tag>('/tags', { method: 'POST', body: JSON.stringify({ name, color }) }),
   tasks: (date: string, signal?: AbortSignal) => request<Task[]>(`/tasks?date=${date}`, { signal }),
   create: (data: TaskInput) => request<Task>('/tasks', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: number, data: Partial<TaskInput> & { is_completed?: boolean }) =>
     request<Task>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id: number) => request<void>(`/tasks/${id}`, { method: 'DELETE' }),
+  postpone: (id: number) => request<Task>(`/tasks/${id}/postpone`, { method: 'POST' }),
   calendar: (month: string, signal?: AbortSignal) => {
     const [year, value] = month.split('-')
     return request<CalendarSummary>(`/calendar?year=${year}&month=${Number(value)}`, { signal })

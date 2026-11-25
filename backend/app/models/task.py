@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 
 from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
 from app.core.clock import utc_now
@@ -48,3 +48,6 @@ class Task(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now, onupdate=utc_now)
     completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    tags: Mapped[list["Tag"]] = relationship(  # noqa: F821
+        secondary="task_tags", order_by="Tag.id", lazy="selectin",
+    )
