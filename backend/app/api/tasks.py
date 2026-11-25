@@ -29,3 +29,8 @@ def update_task(task_id: TaskId, data: TaskUpdate, service: TaskServiceDependenc
 def delete_task(task_id: TaskId, service: TaskServiceDependency):
     service.delete(task_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{task_id}/postpone", response_model=TaskRead)
+def postpone_task(task_id: TaskId, service: TaskServiceDependency):
+    return service.postpone(task_id)

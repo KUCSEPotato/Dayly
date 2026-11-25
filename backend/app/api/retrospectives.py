@@ -10,7 +10,7 @@ from app.schemas.retrospective import RetrospectiveList, SnapshotRead
 router = APIRouter(prefix="/retrospectives", tags=["Retrospectives"])
 
 
-@router.get("", response_model=RetrospectiveList)
+@router.get("", response_model=RetrospectiveList, response_model_exclude_unset=True)
 def list_retrospectives(
     service: RetrospectiveServiceDependency,
     kind: PeriodKind | None = None,
@@ -23,6 +23,6 @@ def list_retrospectives(
     return service.list(kind, anchor, limit, offset)
 
 
-@router.get("/{snapshot_id}", response_model=SnapshotRead)
+@router.get("/{snapshot_id}", response_model=SnapshotRead, response_model_exclude_unset=True)
 def retrospective_detail(snapshot_id: Annotated[int, Path(gt=0)], service: RetrospectiveServiceDependency):
     return service.detail(snapshot_id)

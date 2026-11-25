@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.clock import utc_now
 from app.core.errors import DomainError
 from app.models.task import Task
+from app.models.tag import Tag
 from app.models.task_event import EventType, TaskEvent
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
 from app.services.policy import ensure_accessible
@@ -29,7 +30,8 @@ class TaskService:
         ensure_accessible(data.scheduled_date, self.today)
         with self._transaction():
             now = utc_now()
-            task = Task(**data.model_dump(), created_at=now, updated_at=now)
+            task = Task(**data.model_dump(exclude={"tag_ids"}), tags=self._tags(data.tag_ids),
+                        created_at=now, updated_at=now)
             self.session.add(task)
             self.session.flush()  # Obtain the DB-generated ID before taking the snapshot.
             self._record(task, EventType.CREATED, None, now)
@@ -42,12 +44,21 @@ class TaskService:
     def _snapshot(task: Task) -> dict:
         return TaskRead.model_validate(task).model_dump(mode="json")
 
-    def _record(self, task: Task, kind: EventType, before: dict | None, occurred_at) -> None:
+    def _record(self, task: Task, kind: EventType, before: dict | None, occurred_at,
+                change_reason: str | None = None) -> None:
         self.session.add(TaskEvent(
             task_id=task.id, event_type=kind, before_state=before,
             after_state=None if kind == EventType.DELETED else self._snapshot(task),
             occurred_at=occurred_at,
+            change_reason=change_reason,
         ))
+
+    def _tags(self, tag_ids: list[int]) -> list[Tag]:
+        ids = set(tag_ids)
+        tags = list(self.session.scalars(select(Tag).where(Tag.id.in_(ids)).order_by(Tag.id))) if ids else []
+        if len(tags) != len(ids):
+            raise DomainError("tag_not_found", "선택한 태그를 찾을 수 없습니다. 태그 목록을 다시 확인해 주세요.")
+        return tags
 
     def _get(self, task_id: int) -> Task:
         task = self.session.scalar(
@@ -63,7 +74,11 @@ class TaskService:
         with self._transaction():
             task = self._get(task_id)
             changes = {key: value for key, value in data.model_dump(exclude_unset=True).items()
-                       if getattr(task, key) != value}
+                       if key != "tag_ids" and getattr(task, key) != value}
+            if "tag_ids" in data.model_fields_set:
+                tags = self._tags(data.tag_ids)
+                if [tag.id for tag in task.tags] != [tag.id for tag in tags]:
+                    changes["tags"] = tags
             if not changes:
                 return task
             if "scheduled_date" in changes:
@@ -79,6 +94,20 @@ class TaskService:
             task.updated_at = now
             self.session.flush()
             self._record(task, kind, before, now)
+        return task
+
+    def postpone(self, task_id: int) -> Task:
+        with self._transaction():
+            task = self._get(task_id)
+            if task.is_completed:
+                raise DomainError("task_completed", "완료된 할 일은 미룰 수 없습니다.")
+            if task.scheduled_date == date.max:
+                raise DomainError("date_limit", "더 이상 미룰 수 없는 날짜입니다.")
+            before = self._snapshot(task)
+            task.scheduled_date += timedelta(days=1)
+            task.updated_at = utc_now()
+            self.session.flush()
+            self._record(task, EventType.UPDATED, before, task.updated_at, "POSTPONED")
         return task
 
     def delete(self, task_id: int) -> None:

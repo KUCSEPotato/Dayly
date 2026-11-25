@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BookOpen, CalendarDays, Check, ChevronRight, CircleHelp, LayoutDashboard, LoaderCircle, RefreshCw, Sparkles, Sprout, X } from 'lucide-react'
 import { Calendar } from './components/Calendar'
 import { CompletionSummary } from './components/CompletionSummary'
@@ -36,6 +36,8 @@ export default function App() {
   const [month, setMonth] = useState(today.slice(0, 7))
   const [form, setForm] = useState<{ task?: Task } | null>(null)
   const [busy, setBusy] = useState(false)
+  const mutationInFlight = useRef(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [help, setHelp] = useState(false)
   const { data, loading, error, restricted, refresh } = useDashboard(date, month, today)
@@ -49,14 +51,25 @@ export default function App() {
     setDate(value)
     setMonth(value.slice(0, 7))
     setMutationError(null)
+    setNotice(null)
   }
 
   async function mutate(action: () => Promise<unknown>): Promise<void> {
+    if (mutationInFlight.current) return
+    mutationInFlight.current = true
     setBusy(true)
     setMutationError(null)
+    setNotice(null)
     try { await action(); refresh() }
     catch (cause) { setMutationError(cause instanceof Error ? cause.message : '변경 사항을 저장하지 못했습니다.') }
-    finally { setBusy(false) }
+    finally { mutationInFlight.current = false; setBusy(false) }
+  }
+
+  async function postpone(task: Task) {
+    await mutate(async () => {
+      const updated = await api.postpone(task.id)
+      setNotice(`${formatDay(updated.scheduled_date, { month: 'long', day: 'numeric' })}로 할 일을 미뤘어요.`)
+    })
   }
 
   async function save(input: TaskInput): Promise<boolean> {
@@ -91,12 +104,14 @@ export default function App() {
           <CompletionSummary weekly={data?.weekly} loading={loading} error={Boolean(error)} onOpenRetrospective={kind => navigate('retrospectives', kind)} /></section>
         {error ? <div className="error-banner" role="alert"><div><strong>기록을 불러오지 못했어요.</strong><p>{error}</p></div><button className="button button-quiet" onClick={refresh}><RefreshCw size={15} />다시 시도</button></div> : null}
         {mutationError && <div className="error-banner" role="alert"><p>{mutationError}</p><button className="icon-button" aria-label="오류 닫기" onClick={() => setMutationError(null)}><X size={18} /></button></div>}
+        {notice && <div role="status" className="success-notice"><Check size={16} /><p>{notice}</p><button className="icon-button" aria-label="안내 닫기" onClick={() => setNotice(null)}><X size={16} /></button></div>}
         <div className="dashboard-grid">
           <Calendar month={month} selectedDate={date} today={today} summary={visibleSummary} onSelect={selectDate} onNavigate={offset => setMonth(value => shiftMonth(value, offset))} onToday={() => selectDate(today)} />
           {error ? <section className="panel tasks-panel"><div className="empty-state"><CircleHelp size={30} /><h2>연결을 확인해 주세요</h2><p>다시 시도하면 저장된 할 일을 불러옵니다.</p></div></section> :
             <TaskList date={date} today={today} tasks={data?.tasks ?? []} stats={data?.daily ?? null} restricted={restricted} loading={loading} busy={busy}
               onAdd={() => setForm({})} onEdit={task => setForm({ task })}
               onToggle={task => void mutate(() => api.update(task.id, { is_completed: !task.is_completed }))}
+              onPostpone={task => void postpone(task)}
               onDelete={task => void mutate(() => api.delete(task.id))} />}
         </div>
         {!loading && !error && data && <WeeklyStatistics stats={data.weekly} selectedDate={date} onSelect={selectDate} />}

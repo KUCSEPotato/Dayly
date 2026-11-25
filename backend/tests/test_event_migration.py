@@ -30,12 +30,12 @@ def test_upgrade_preserves_existing_tasks_and_baselines_once(tmp_path, monkeypat
                      completed_at=created, created_at=created, updated_at=created),
             ])
             session.commit()
-            originals = [TaskRead.model_validate(task).model_dump(mode="json")
-                         for task in session.scalars(select(Task).order_by(Task.id))]
+            originals = [TaskRead.model_validate(row).model_dump(mode="json", exclude={"tags"})
+                         for row in session.execute(Task.__table__.select().order_by(Task.id)).mappings()]
         command.upgrade(config, "head")
         command.upgrade(config, "head")  # A normal rerun is safe and creates no duplicate baselines.
         with factory() as session:
-            assert [TaskRead.model_validate(task).model_dump(mode="json")
+            assert [TaskRead.model_validate(task).model_dump(mode="json", exclude={"tags"})
                     for task in session.scalars(select(Task).order_by(Task.id))] == originals
             events = list(session.scalars(select(TaskEvent).order_by(TaskEvent.id)))
             assert len(events) == 2
@@ -44,14 +44,14 @@ def test_upgrade_preserves_existing_tasks_and_baselines_once(tmp_path, monkeypat
             assert all(item.before_state is None and item.occurred_at > created for item in events)
             history = TaskHistoryService(session)
             assert history.reconstruct(events[0].occurred_at) == []
-            assert [item.model_dump(mode="json") for item in history.reconstruct(
+            assert [item.model_dump(mode="json", exclude={"tags"}) for item in history.reconstruct(
                 events[0].occurred_at + timedelta(microseconds=1))] == originals
         with factory() as session:
             TaskService(session, date(2026, 11, 2)).update(7, TaskUpdate(title="이후 수정"))
         with factory() as session:
             events = list(session.scalars(select(TaskEvent).order_by(TaskEvent.id)))
             assert events[-1].event_type == "UPDATED"
-            assert events[-1].before_state == originals[0]
+            assert events[-1].before_state == {**originals[0], "tags": []}
             assert events[-1].after_state["title"] == "이후 수정"
             assert "AUTOINCREMENT" in session.scalar(text("SELECT sql FROM sqlite_master WHERE name='tasks'"))
         command.check(config)

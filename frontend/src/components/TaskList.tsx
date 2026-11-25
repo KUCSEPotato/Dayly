@@ -16,6 +16,7 @@ interface Props {
   onToggle: (task: Task) => void
   onEdit: (task: Task) => void
   onDelete: (task: Task) => void
+  onPostpone: (task: Task) => void
 }
 
 export function TaskList(props: Props) {
@@ -33,7 +34,7 @@ export function TaskList(props: Props) {
         {tasks.length === 0 ? <div className="empty-state"><div className="empty-icon"><Leaf size={29} strokeWidth={1.5} /></div><h3>아직 비어 있는 하루</h3><p>작은 할 일 하나로 하루를 시작해 보세요.<br />차근차근, 나만의 속도로 채워 가면 돼요.</p><button className="text-button" onClick={props.onAdd}><Plus size={15} />첫 번째 할 일 추가하기</button></div> :
           <div className="task-groups">{[{ label: '해야 할 일', items: pending }, { label: '완료한 일', items: completed }].map(group => group.items.length > 0 && <div key={group.label}>
             <h3 className="task-group-title">{group.label}<span>{group.items.length}</span></h3>
-            <ul>{group.items.map(task => <TaskItem key={task.id} task={task} busy={busy} onToggle={props.onToggle} onEdit={props.onEdit} onDelete={props.onDelete} />)}</ul>
+            <ul>{group.items.map(task => <TaskItem key={task.id} task={task} busy={busy} onToggle={props.onToggle} onEdit={props.onEdit} onDelete={props.onDelete} onPostpone={props.onPostpone} />)}</ul>
           </div>)}
             {pending.length === 0 && <div className="all-complete"><Check size={16} />오늘의 할 일을 모두 마쳤어요. 수고했어요!</div>}
           </div>}
