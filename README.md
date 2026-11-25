@@ -6,9 +6,9 @@ Dayly는 개인의 할 일을 날짜별로 관리하고, 수행 내역과 달성
 
 FastAPI를 학습하면서 실제로 사용할 수 있는 앱을 만드는 것이 개발 배경입니다. React 화면, FastAPI API, SQLite를 연결하고, Router·Schema·Model·Service의 역할을 분리해 요청 처리와 데이터 저장 흐름을 코드로 이해할 수 있도록 구성했습니다.
 
-현재 구현 버전은 **v0.2.1**입니다. 실시간 할 일 관리에 더해, Task Events로 과거 상태를 복원한 고정 회고와 경험치 기록을 제공합니다. 앱 실행 시 샘플 데이터를 자동으로 넣지 않습니다.
+현재 구현 버전은 **v0.2.2**입니다. 날짜별 할 일에 사용자 지정 태그를 붙이고 다음 날로 미룰 수 있으며, Task Events로 과거 상태를 복원한 고정 회고와 경험치 기록을 제공합니다. 앱 실행 시 샘플 데이터를 자동으로 넣지 않습니다.
 
-프로젝트 버전은 `v0.2.1`, 개발 브랜치는 `dev-v0.2.1`처럼 표기합니다. 버전별 변경 내역은 [Release Notes](#release-notes)에서 확인할 수 있습니다.
+프로젝트 버전은 `v0.2.2`, 개발 브랜치는 `dev-v0.2.2`처럼 표기합니다. 버전별 변경 내역은 [Release Notes](#release-notes)에서 확인할 수 있습니다.
 
 ## Features
 
@@ -16,6 +16,8 @@ FastAPI를 학습하면서 실제로 사용할 수 있는 앱을 만드는 것�
 
 - 날짜별 할 일 생성·조회·수정·삭제, 제목·설명·예정 날짜 관리
 - 완료 체크 및 해제, 완료 시각 기록, 완료 항목의 시각적 구분
+- 제목과 독립된 사용자 지정 태그 생성·검색·다중 지정·해제, 6가지 색상 선택과 기존 태그 재사용
+- 미완료 할 일을 기존 예정 날짜의 다음 날로 즉시 미루기. ID·설명·태그와 선택 날짜를 유지하며 목록·달력·달성률 갱신
 - 월간 달력 이동, 오늘·선택 날짜 강조, 날짜별 완료/전체 개수 표시
 - API 저장 성공 후 목록·달력·통계 갱신, 실패 시 오류 표시와 폼 입력 보존
 
@@ -29,6 +31,7 @@ FastAPI를 학습하면서 실제로 사용할 수 있는 앱을 만드는 것�
 
 - 일간·주간·월간 고정 회고, 이전/다음 기간 이동
 - Task Events를 이용한 날짜별 종료 시점 상태 복원
+- 당시 태그 정보도 이벤트에서 복원하며, 이후 태그 변경·미루기가 이미 생성된 회고를 바꾸지 않음
 - Snapshot에 통계·완료/미완료 Task 사본·기간 XP를 저장하고 고정
 - 일별 그래프, 월간 주차별 완료 개수, 가장 많이 완료한 날짜 표시
 - 활동 기록 없음·부분 기록·복원 불가·미종료 기간 구분
@@ -134,6 +137,46 @@ docker compose down -v     # 종료, 기록 삭제 (데이터가 삭제되기 �
 
 Docker가 실행 중이어야 서비스를 사용할 수 있습니다. `restart: unless-stopped`로 직접 중지하지 않은 컨테이너는 Docker 엔진 재시작 시 다시 시작합니다. Mac 로그인 후 자동 실행이 필요하면 Docker Desktop의 로그인 시 시작 옵션도 설정하세요.
 
+### 코드 변경 후 Docker에 반영
+
+반영할 코드가 있는 브랜치에서 프로젝트 루트로 이동한 뒤, 사용할 환경의 명령을 실행합니다. Docker는 소스 코드를 이미지에 복사하고 React 화면을 빌드하므로 **코드를 수정하거나 새 코드를 받은 후에는 이미지를 다시 빌드해야 합니다.** `docker compose restart`만 실행하면 기존 이미지의 코드로 다시 시작합니다.
+
+**기본 개인 사용 환경 — 8080**
+
+```bash
+docker compose up -d --build --wait
+docker compose ps
+```
+
+**개발 환경 — 8081**
+
+```bash
+sh deploy/dev.sh
+sh deploy/dev.sh ps
+```
+
+개발 스크립트는 아래 Compose 명령을 실행합니다.
+
+```bash
+docker compose -f compose.dev.yaml up -d --build --wait
+```
+
+`--build`로 이미지를 빌드하고 변경된 이미지나 설정에 맞춰 컨테이너를 재생성하며, `--wait`로 준비 상태까지 기다립니다. 미리 `down`을 실행할 필요는 없습니다. DB 볼륨은 유지되고 백엔드 시작 시 `alembic upgrade head`가 자동 적용됩니다. DB 스키마가 바뀌는 업데이트는 [백업 방법](#마이그레이션과-백업)에 따라 해당 환경의 DB를 먼저 백업하세요.
+
+빌드 캐시를 사용하지 않고 다시 빌드해야 할 때만 다음을 사용합니다.
+
+```bash
+# 기본 개인 사용 환경
+docker compose build --no-cache
+docker compose up -d --wait
+
+# 개발 환경
+docker compose -f compose.dev.yaml build --no-cache
+docker compose -f compose.dev.yaml up -d --wait
+```
+
+각 명령은 해당 환경의 컨테이너와 데이터 볼륨을 사용합니다. 업데이트 과정에서 `down -v`를 실행하면 기존 기록이 삭제되므로 사용하지 않습니다.
+
 ### Docker 없이 개발
 
 백엔드와 프론트엔드를 각각 별도 터미널에서 실행합니다.
@@ -188,10 +231,10 @@ XP 수치는 **임시 정책**입니다. 아래 설정값은 새 지급 건에 �
 ```text
 backend/
 ├── app/
-│   ├── api/          # Tasks, Calendar/Stats, Retrospectives, Growth Router와 의존성
+│   ├── api/          # Tasks, Tags, Calendar/Stats, Retrospectives, Growth Router와 의존성
 │   ├── schemas/      # Pydantic 요청·응답 계약
-│   ├── models/       # Task, Event, Snapshot, XP 원장 등 SQLAlchemy 모델
-│   ├── services/     # CRUD, 과거 복원, 회고 집계, XP·레벨, 트랜잭션
+│   ├── models/       # Task, Tag/연결, Event, Snapshot, XP 원장 등 SQLAlchemy 모델
+│   ├── services/     # CRUD·태그·미루기, 과거 복원, 회고 집계, XP·레벨, 트랜잭션
 │   ├── core/         # 설정, UTC/서울 시계, 회고 기간, 도메인 오류
 │   ├── db.py         # Engine, Base, 요청별 Session
 │   └── main.py       # 앱 조립, CORS, 예외 응답
@@ -201,7 +244,7 @@ backend/
 └── uv.lock
 frontend/
 ├── src/
-│   ├── components/   # 달력·Task·달성률 카드·회고·세계 화면
+│   ├── components/   # 달력·Task·태그 선택·달성률 카드·회고·세계 화면
 │   ├── hooks/        # Dashboard 데이터 조회와 요청 취소
 │   ├── lib/          # API 호출과 날짜 처리
 │   ├── App.tsx       # Workspace와 해시 기반 화면 이동
@@ -242,14 +285,28 @@ compose.dev.yaml      # 분리된 개발 환경
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/tasks?date=YYYY-MM-DD` | 해당 날짜의 할 일 목록 |
-| POST | `/api/tasks` | 제목·예정 날짜·선택 설명으로 생성, 201 반환 |
-| PATCH | `/api/tasks/{id}` | 제목·설명·예정 날짜·완료 여부 변경 |
+| POST | `/api/tasks` | 제목·예정 날짜·선택 설명·태그 ID로 생성, 201 반환 |
+| PATCH | `/api/tasks/{id}` | 제목·설명·예정 날짜·완료 여부·지정 태그 변경 |
+| POST | `/api/tasks/{id}/postpone` | 서버에 저장된 예정 날짜에서 하루 미루기. 완료된 Task는 403 |
 | DELETE | `/api/tasks/{id}` | 삭제, 본문 없는 204 반환 |
 | GET | `/api/calendar?year=2026&month=11` | 월간 날짜별 완료/전체 현황 |
 | GET | `/api/stats/daily?date=YYYY-MM-DD` | 특정 날짜의 실시간 달성률 |
 | GET | `/api/stats/weekly` | 오늘을 포함한 최근 7일 실시간 통계 |
 
 제목은 공백 제거 후 1~200자, 설명은 최대 5,000자입니다. PATCH에서 생략한 필드는 유지하고 `description: null`로 설명을 지웁니다. 제목·날짜·완료 상태의 명시적 null, 빈 PATCH, 정의되지 않은 입력 필드는 거절합니다.
+
+태그는 생성·수정 요청의 `tag_ids` 배열로 지정하고 응답의 `tags`에 ID·이름·색상을 포함합니다. 수정 요청에서 `tag_ids`를 생략하면 유지하고 `[]`이면 모두 해제합니다. 존재하지 않는 태그 ID는 404, `null`이나 잘못된 ID 형식은 422입니다.
+
+미루기는 요청 본문 없이 호출합니다. 기존 Task ID·제목·설명·태그·생성 시각을 유지하고 예정 날짜와 수정 시각을 갱신합니다. 성공 요청마다 하루 이동하며 화면에서는 처리 중 중복 클릭을 막습니다.
+
+### Tag API
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/tags?q=Python` | 전체 태그 조회 또는 이름 부분 검색. `q`는 선택 |
+| POST | `/api/tags` | 이름·선택 색상으로 생성. 같은 정규화 이름이면 기존 태그 재사용 |
+
+이름은 앞뒤 공백 제거 후 1~30자이며 대소문자를 구분하지 않고 중복을 판별합니다. 색상은 정해진 6가지 팔레트 중 선택하고 생략하면 기본 초록색을 사용합니다. Task에서 태그를 해제하거나 Task를 삭제해도 태그 자체는 보존합니다. 태그 전체 이름 변경·삭제와 별도 관리 페이지는 아직 제공하지 않습니다. 팔레트와 요청 예시는 [v0.2.2 API 변경 사항](docs/releases/v0.2.2.md#api-changes)을 참고하세요.
 
 ### Retrospective API
 
@@ -276,7 +333,8 @@ compose.dev.yaml      # 분리된 개발 환경
 | 데이터 | 역할과 보존 방식 |
 |---|---|
 | `tasks` | 현재 할 일 상태. 완료 체크 시 UTC 완료 시각을 저장하고 해제하면 null로 초기화 |
-| `task_events` | 생성·수정·완료·해제·삭제·BASELINE의 전체 before/after 사본. Task 삭제 후에도 유지하는 append-only 이력 |
+| `tags`, `task_tags` | 재사용 태그와 Task–Tag 다대다 연결. 중복 이름·연결을 방지하며 Task 삭제 시 연결만 제거 |
+| `task_events` | 생성·수정·완료·해제·삭제·BASELINE의 전체 before/after 사본과 당시 태그 정보. 미루기는 `UPDATED`와 `change_reason=POSTPONED`로 구분하고 Task 삭제 후에도 유지하는 append-only 이력 |
 | `retrospective_snapshots` | 종류·기간·고정 통계·Task 사본·기간 XP. 같은 종류와 기간에는 하나만 저장하며 생성 후 변경하지 않음 |
 | `experience_grants` | XP Ledger. 지급 원인·Task/이벤트·귀속 날짜·지급량·고유 키를 보관하고 중복 지급 방지 |
 | `history_coverage` | 신뢰할 수 있는 이력 추적 시작 시각. 활동 없음과 복원 불가를 구분하는 기준 |
@@ -301,9 +359,11 @@ compose.dev.yaml      # 분리된 개발 환경
 
 XP는 Task의 최초 추적 완료에 한 번 지급하고 완료 해제·삭제 시 회수하지 않습니다. BASELINE에서 이미 완료된 항목에는 과거 완료 보상을 추정하지 않습니다. 성장 API 조회와 새 Snapshot 생성 시 누락된 지급을 동기화합니다. 기본 누적 레벨 경계는 0 / 100 / 300 / 600 XP이며, 자세한 계산·중복 방지·보너스 귀속 규칙은 [v0.2.1 설계](docs/releases/v0.2.1.md)를 참고하세요.
 
+태그 생성·지정·해제와 미루기 자체에는 XP를 지급하지 않습니다. 예전 이벤트와 Snapshot에 태그 정보가 없어도 조회·복원할 수 있으며 기존 기록을 현재 태그로 보충하거나 다시 계산하지 않습니다.
+
 ### 마이그레이션과 백업
 
-Alembic `0001`은 Task, `0002`는 Task Events와 기존 Task의 BASELINE, `0003`은 Snapshot·XP 원장·추적 시작 정보를 구성합니다. 기존 ID와 데이터를 보존하며, 앱에서 `create_all()`로 마이그레이션 누락을 숨기지 않습니다. 변경 전에는 대상 DB를 백업하세요. downgrade는 이력 테이블을 제거할 수 있으므로 일반 종료에 사용하지 않습니다.
+Alembic `0001`은 Task, `0002`는 Task Events와 기존 Task의 BASELINE, `0003`은 Snapshot·XP 원장·추적 시작 정보를 구성합니다. 최신 `0004`는 태그·연결 테이블과 이벤트 변경 사유를 추가하며 기존 Task에는 태그를 임의로 지정하지 않습니다. 기존 ID와 데이터를 보존하며, 앱에서 `create_all()`로 마이그레이션 누락을 숨기지 않습니다. 변경 전에는 대상 DB를 백업하세요. downgrade는 이력 테이블을 제거할 수 있으므로 일반 종료에 사용하지 않습니다. 상세한 보존 정책은 [v0.2.2 마이그레이션](docs/releases/v0.2.2.md#database--migration)에 기록했습니다.
 
 Docker DB 파일은 `/app/data/todo.db`입니다. `down`은 볼륨을 유지하지만 **`down -v`는 데이터까지 삭제**합니다. Docker 기본/개발 볼륨과 직접 실행 DB 사이의 자동 복사·동기화는 없습니다.
 
@@ -326,7 +386,7 @@ uv sync --locked
 uv run pytest -q
 ```
 
-각 테스트는 임시 SQLite 파일에 실제 마이그레이션을 적용합니다. Task CRUD, 입력 검증, 통계, 이벤트·rollback·과거 복원, 회고 불변성, XP 정책·동시 요청 등을 검증하며 개인 DB를 초기화하지 않습니다.
+각 테스트는 임시 SQLite 파일에 실제 마이그레이션을 적용합니다. Task CRUD, 태그 정규화·연결, 미루기 날짜 경계, 입력 검증, 통계, 이벤트·rollback·과거 복원, 회고 불변성, XP 정책·동시 요청 등을 검증하며 개인 DB를 초기화하지 않습니다.
 
 ### Frontend / E2E — Playwright
 
@@ -337,7 +397,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-기본 설정은 별도 임시 DB, 백엔드 8001·프론트엔드 5174 포트를 사용합니다. 테스트 전용 과거 데이터를 넣어 Dashboard·회고·성장 화면과 실제 API를 검증합니다. 이 데이터 준비는 앱의 정상 실행에 포함되지 않습니다. 지정된 포트는 비어 있어야 합니다.
+기본 설정은 별도 임시 DB, 백엔드 8001·프론트엔드 5174 포트를 사용합니다. 테스트 전용 과거 데이터를 넣어 Dashboard·태그·미루기·회고·성장 화면과 실제 API를 검증합니다. 이 데이터 준비는 앱의 정상 실행에 포함되지 않습니다. 지정된 포트는 비어 있어야 합니다.
 
 `E2E_BASE_URL`을 지정하면 해당 서버를 사용합니다. 테스트가 Task를 생성·삭제하므로 개인 기록이 없는 별도 검증 서버에만 지정하세요. 스크린샷과 실패 trace는 `frontend/test-results/`에 생성되며 Git에서 제외됩니다.
 
@@ -362,7 +422,7 @@ uv run alembic check
 docker compose -f compose.dev.yaml exec -T backend alembic check
 ```
 
-버전별 검증 결과와 상세 시나리오는 [v0.2.1 패치노트](docs/releases/v0.2.1.md#testing)를 참고하세요.
+버전별 검증 결과와 상세 시나리오는 [v0.2.2 패치노트](docs/releases/v0.2.2.md#testing)를 참고하세요.
 
 ## Release Notes
 
@@ -371,6 +431,7 @@ docker compose -f compose.dev.yaml exec -T backend alembic check
 | [v0.1.0](docs/releases/v0.1.0.md) | Task CRUD, 달력, 일일·최근 7일 통계와 Docker 실행 |
 | [v0.2.0](docs/releases/v0.2.0.md) | Task Events, 과거 복원, BASELINE, 달성률 전환과 개발 환경 분리 |
 | [v0.2.1](docs/releases/v0.2.1.md) | 고정 회고 Snapshot, XP·레벨 원장, 회고/세계 워크스페이스 |
+| [v0.2.2](docs/releases/v0.2.2.md) | 사용자 지정 태그, 다음 날로 미루기, 태그·예정 날짜 이력과 기존 회고·XP 호환성 |
 
 ## Roadmap
 
