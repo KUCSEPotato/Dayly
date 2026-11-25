@@ -1788,15 +1788,16 @@ textarea {
   gap: 5px;
   max-width: 100%;
   overflow-wrap: anywhere;
-  border: 1px solid #e1e7d9;
-  border-radius: 5px;
-  background: #f5f7f1;
-  padding: 3px 6px;
-  color: #58664e;
+  border: 1px solid color-mix(in srgb, var(--tag-color, #7c956b) 20%, white);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--tag-color, #7c956b) 16%, white);
+  padding: 3px 7px;
+  color: color-mix(in srgb, var(--tag-color, #7c956b) 68%, black);
   font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
   text-align: left;
 }
-.tag-color { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 .tag-chip svg { flex-shrink: 0; }
 .task-item.completed .task-tags { opacity: .65; }
 .task-actions { flex-shrink: 0; }
@@ -1804,7 +1805,8 @@ textarea {
 .tag-picker legend { color: #768568; font-size: 12px; margin-bottom: 8px; }
 .tag-search { margin-top: 8px; }
 .tag-options { max-height: 130px; overflow-y: auto; margin-top: 10px; }
-.tag-options .tag-chip[aria-pressed="true"] { border-color: #7c956b; background: #eaf1e2; }
+.tag-options .tag-chip[aria-pressed="true"] { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; }
+.tag-picker button.tag-chip:hover:not(:disabled) { filter: brightness(.97); }
 .tag-hint { display: flex; gap: 5px; font-size: 11px; color: #8b977e; margin-top: 9px; }
 .new-tag { margin-top: 12px; }
 .new-tag .text-button { overflow-wrap: anywhere; text-align: left; }

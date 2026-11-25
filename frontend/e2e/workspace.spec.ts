@@ -22,7 +22,7 @@ test('weekly snapshot, previous/next navigation, task lists and monthly graph', 
   const historicalTags = page.getByLabel('지정된 태그')
   await expect(historicalTags).toHaveText('회고 태그')
   await expect(historicalTags).toHaveCSS('display', 'flex')
-  await expect(historicalTags.locator('.tag-color')).toHaveCSS('background-color', 'rgb(100, 140, 166)')
+  await expect(historicalTags.locator('.tag-chip')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(page.getByText('회고 검증 · 미완료', { exact: true })).toBeVisible()
   await expect(page.getByRole('progressbar', { name: '고정 회고 달성률' })).toHaveAttribute('aria-valuenow', '50')
   await expect(page.getByRole('region', { name: '고정 회고 요약' })).toContainText('20')

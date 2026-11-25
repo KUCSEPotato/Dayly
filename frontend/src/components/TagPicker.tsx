@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { LoaderCircle, Plus, X } from 'lucide-react'
 import { api } from '../lib/api'
+import { tagStyle } from '../lib/tags'
 import type { Tag } from '../types'
 
 const palette = [
@@ -60,13 +61,13 @@ export function TagPicker({ selected, onChange, disabled, onCreating }: Props) {
   return <fieldset className="tag-picker" disabled={locked}>
     <legend>태그 <span className="optional">선택</span></legend>
     {selected.length > 0 && <div className="selected-tags" aria-label="선택한 태그">{selected.map(tag =>
-      <button type="button" className="tag-chip" key={tag.id} aria-label={`${tag.name} 태그 지정 해제`} onClick={() => toggle(tag)}>
-        <span className="tag-color" style={{ backgroundColor: tag.color }} aria-hidden="true" />{tag.name}<X size={12} /></button>)}</div>}
+      <button type="button" className="tag-chip" style={tagStyle(tag.color)} key={tag.id} aria-label={`${tag.name} 태그 지정 해제`} onClick={() => toggle(tag)}>
+        {tag.name}<X size={12} /></button>)}</div>}
     <label className="tag-search">태그 검색 또는 새 이름<input maxLength={30} value={query} onChange={event => setQuery(event.target.value)} placeholder="예: Python, Dayly" /></label>
     {loading ? <p className="tag-hint" role="status">태그를 불러오는 중이에요.</p> : <>
       <div className="tag-options" aria-label="기존 태그">{matches.map(tag =>
-        <button type="button" className="tag-chip" aria-pressed={selected.some(item => item.id === tag.id)} key={tag.id} onClick={() => toggle(tag)}>
-          <span className="tag-color" style={{ backgroundColor: tag.color }} aria-hidden="true" />{tag.name}</button>)}</div>
+        <button type="button" className="tag-chip" style={tagStyle(tag.color)} aria-pressed={selected.some(item => item.id === tag.id)} key={tag.id} onClick={() => toggle(tag)}>
+          {tag.name}</button>)}</div>
       {canCreate && <div className="new-tag">
         <div className="tag-palette" role="group" aria-label="새 태그 색상">{palette.map(item =>
           <label key={item.color} title={item.name}><input type="radio" name="tag-color" aria-label={item.name} value={item.color} checked={color === item.color} onChange={() => setColor(item.color)} /><span style={{ backgroundColor: item.color }} /></label>)}</div>
