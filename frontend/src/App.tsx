@@ -54,20 +54,20 @@ export default function App() {
     setNotice(null)
   }
 
-  async function mutate(action: () => Promise<unknown>): Promise<void> {
-    if (mutationInFlight.current) return
+  async function mutate(action: () => Promise<unknown>): Promise<boolean> {
+    if (mutationInFlight.current) return false
     mutationInFlight.current = true
     setBusy(true)
     setMutationError(null)
     setNotice(null)
-    try { await action(); refresh() }
-    catch (cause) { setMutationError(cause instanceof Error ? cause.message : '변경 사항을 저장하지 못했습니다.') }
+    try { await action(); refresh(); return true }
+    catch (cause) { setMutationError(cause instanceof Error ? cause.message : '변경 사항을 저장하지 못했습니다.'); return false }
     finally { mutationInFlight.current = false; setBusy(false) }
   }
 
-  async function postpone(task: Task) {
-    await mutate(async () => {
-      const updated = await api.postpone(task.id)
+  async function postpone(task: Task, targetDate?: string) {
+    return mutate(async () => {
+      const updated = await api.postpone(task.id, targetDate)
       setNotice(`${formatDay(updated.scheduled_date, { month: 'long', day: 'numeric' })}로 할 일을 미뤘어요.`)
     })
   }
@@ -111,7 +111,7 @@ export default function App() {
             <TaskList date={date} today={today} tasks={data?.tasks ?? []} stats={data?.daily ?? null} restricted={restricted} loading={loading} busy={busy}
               onAdd={() => setForm({})} onEdit={task => setForm({ task })}
               onToggle={task => void mutate(() => api.update(task.id, { is_completed: !task.is_completed }))}
-              onPostpone={task => void postpone(task)}
+              onPostpone={postpone}
               onDelete={task => void mutate(() => api.delete(task.id))} />}
         </div>
         {!loading && !error && data && <WeeklyStatistics stats={data.weekly} selectedDate={date} onSelect={selectDate} />}

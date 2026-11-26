@@ -16,7 +16,7 @@ interface Props {
   onToggle: (task: Task) => void
   onEdit: (task: Task) => void
   onDelete: (task: Task) => void
-  onPostpone: (task: Task) => void
+  onPostpone: (task: Task, targetDate?: string) => Promise<boolean>
 }
 
 export function TaskList(props: Props) {

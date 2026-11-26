@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BookOpen, Check, ChevronLeft, ChevronRight, Circle, Clock3, LoaderCircle, RefreshCw, Sparkles } from 'lucide-react'
 import { api } from '../lib/api'
 import { TaskTags } from './TaskTags'
+import { RetrospectiveAnalysis } from './RetrospectiveAnalysis'
 import { addDays, asDate, formatDay, rateLabel, seoulToday } from '../lib/dates'
 import type { RetrospectiveKind, RetrospectiveList, Task } from '../types'
 
@@ -69,6 +70,7 @@ export function RetrospectivePage({ kind, onKindChange }: { kind: RetrospectiveK
           <div className="progress-track" role="progressbar" aria-label="고정 회고 달성률" aria-valuemin={0} aria-valuemax={100} aria-valuenow={rate ?? 0} aria-valuetext={status === 'unavailable' ? '기록 복원 불가' : rateLabel(rate)}><div className="progress-fill" style={{ width: `${rate ?? 0}%` }} /></div>
           <p className="snapshot-footnote">생성된 회고는 할 일을 수정하거나 삭제해도 바뀌지 않아요. · 실제 최초 완료 {snapshot.data.activity.unique_completed_tasks}개</p>
         </section>
+        <RetrospectiveAnalysis key={snapshot.id} analysis={snapshot.data.analysis} />
         {status !== 'unavailable' && <>
           <section className="panel retrospective-chart"><div className="section-heading"><h2>날짜별 확정 달성률</h2>{snapshot.data.best_day && <span className="best-day"><Sparkles size={13} />가장 많이 해낸 날 {formatDay(snapshot.data.best_day, { month: 'numeric', day: 'numeric' })}</span>}</div>
             <div className="retro-chart-scroll"><div className="retro-bars" role="group" aria-label="회고 날짜별 달성률" style={{ gridTemplateColumns: `repeat(${snapshot.data.days.length}, minmax(32px, 1fr))` }}>

@@ -6,6 +6,7 @@ from app.models import HistoryCoverage
 from app.schemas.task import TaskRead
 from app.services.statistics import completion_rate
 from app.services.task_history import TaskHistoryService
+from app.services.retrospective_analysis import RetrospectiveAnalysisService
 
 
 class RetrospectiveAggregator:
@@ -70,6 +71,7 @@ class RetrospectiveAggregator:
             "completed": completed if known else None, "incomplete": total - completed if known else None,
             "completion_rate": completion_rate(completed, total) if known else None,
             "data": {
+                "analysis": RetrospectiveAnalysisService(self.history, self.started_at).build(period, days),
                 "completed_tasks": [task for day in days for task in day["completed_tasks"]],
                 "incomplete_tasks": [task for day in days for task in day["incomplete_tasks"]],
                 "days": [{key: value for key, value in day.items() if not key.endswith("_tasks")} for day in days],
