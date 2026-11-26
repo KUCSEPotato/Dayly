@@ -50,3 +50,15 @@ class TaskRead(BaseModel):
     updated_at: datetime
     completed_at: datetime | None
     tags: list[TagRead] = Field(default_factory=list)
+
+
+class TaskPostpone(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_date: date | None = None
+
+    @model_validator(mode="after")
+    def validate_target(self):
+        if "target_date" in self.model_fields_set and self.target_date is None:
+            raise ValueError("target_date에는 null을 사용할 수 없습니다.")
+        return self

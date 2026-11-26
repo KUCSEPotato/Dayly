@@ -37,7 +37,9 @@ export const api = {
   update: (id: number, data: Partial<TaskInput> & { is_completed?: boolean }) =>
     request<Task>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id: number) => request<void>(`/tasks/${id}`, { method: 'DELETE' }),
-  postpone: (id: number) => request<Task>(`/tasks/${id}/postpone`, { method: 'POST' }),
+  postpone: (id: number, targetDate?: string) => request<Task>(`/tasks/${id}/postpone`, {
+    method: 'POST', ...(targetDate ? { body: JSON.stringify({ target_date: targetDate }) } : {}),
+  }),
   calendar: (month: string, signal?: AbortSignal) => {
     const [year, value] = month.split('-')
     return request<CalendarSummary>(`/calendar?year=${year}&month=${Number(value)}`, { signal })

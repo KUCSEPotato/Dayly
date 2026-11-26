@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query, Response, status
 
 from app.api.dependencies import TaskServiceDependency
-from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from app.schemas.task import TaskCreate, TaskPostpone, TaskRead, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 TaskId = Annotated[int, Path(gt=0)]
@@ -32,5 +32,5 @@ def delete_task(task_id: TaskId, service: TaskServiceDependency):
 
 
 @router.post("/{task_id}/postpone", response_model=TaskRead)
-def postpone_task(task_id: TaskId, service: TaskServiceDependency):
-    return service.postpone(task_id)
+def postpone_task(task_id: TaskId, service: TaskServiceDependency, data: TaskPostpone | None = None):
+    return service.postpone(task_id, data.target_date if data else None)

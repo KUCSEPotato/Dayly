@@ -1822,3 +1822,39 @@ textarea {
   .task-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
   .task-actions .icon-button { width: 26px; height: 30px; }
 }
+
+.postpone-popover { position: fixed; z-index: 100; width: 270px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow-y: auto; padding: 12px; border: 1px solid #dce5d3; border-radius: 10px; background: #fff; box-shadow: 0 10px 35px #35452a24; color: #58674d; }
+.postpone-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 7px 7px; font-size: 12px; }
+.postpone-option { display: flex; align-items: center; gap: 9px; width: 100%; padding: 10px 8px; text-align: left; border-radius: 5px; background: transparent; color: #657956; font-size: 12px; }
+.postpone-option:hover:not(:disabled) { background: #f0f5eb; }
+.postpone-date-form { border-top: 1px solid #e8eedf; margin-top: 7px; padding: 12px 6px 3px; }
+.postpone-date-form label { font-size: 11px; }
+.postpone-date-form input { min-width: 0; }
+.postpone-hint { margin: 9px 0 12px; font-size: 10px; line-height: 1.8; color: #89977e; }
+.postpone-date-form .button { width: 100%; justify-content: center; }
+.retrospective-analysis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 22px; }
+.analysis-panel { padding: 24px; min-width: 0; }
+.analysis-panel h2 { display: flex; align-items: center; gap: 7px; font-size: 15px; }
+.analysis-insights, .analysis-insight { margin-top: 17px; color: #8b997d; font-size: 11px; line-height: 1.9; overflow-wrap: anywhere; }
+.analysis-insights strong, .analysis-insight strong { font-weight: 550; color: #687f55; }
+.tag-activity-list { margin-top: 15px; }
+.tag-activity-list li { padding: 13px 0; border-bottom: 1px solid #edf1e7; }
+.analysis-row-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.analysis-row-heading > span:not(.tag-chip) { font-size: 10px; color: #8d9b80; }
+.analysis-row-heading > strong { margin-left: auto; font-size: 12px; font-weight: 550; color: #6b8358; }
+.tag-activity-list .progress-track { height: 5px; margin-top: 10px; }
+.analysis-footnote { font-size: 10px; line-height: 1.9; color: #9eaa93; margin-top: 17px; }
+.analysis-legacy { padding: 18px 22px; margin-top: 22px; color: #8e9e80; font-size: 12px; line-height: 1.8; }
+.analysis-unavailable { padding: 20px 0 4px; font-size: 12px; line-height: 1.9; color: #8e9d80; }
+.analysis-unavailable strong { font-weight: 500; }
+.analysis-unavailable p { margin-top: 8px; font-size: 11px; color: #9ca88f; }
+.postponement-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 22px; }
+.postponement-metrics dt { font-size: 10px; color: #93a185; line-height: 1.7; }
+.postponement-metrics dd { font-size: 25px; color: #698353; margin-top: 8px; }
+.postponement-metrics small { font-size: 11px; margin-left: 3px; color: #98a88a; }
+.postponement-tag-list { margin-top: 12px; }
+.postponement-tag-list li { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 0; border-bottom: 1px solid #edf1e7; }
+.postponement-tag-list li > span:last-child:not(.tag-chip) { margin-left: auto; font-size: 11px; color: #8f9f81; }
+.analysis-more { margin-top: 14px; }
+@media (max-width: 950px) { .retrospective-analysis { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .retrospective-analysis { gap: 17px; margin-top: 17px; } .analysis-panel { padding: 21px; } .analysis-row-heading > span:not(.tag-chip) { font-size: 9px; } }

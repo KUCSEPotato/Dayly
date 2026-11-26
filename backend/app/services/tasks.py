@@ -96,15 +96,18 @@ class TaskService:
             self._record(task, kind, before, now)
         return task
 
-    def postpone(self, task_id: int) -> Task:
+    def postpone(self, task_id: int, target_date: date | None = None) -> Task:
         with self._transaction():
             task = self._get(task_id)
             if task.is_completed:
                 raise DomainError("task_completed", "완료된 할 일은 미룰 수 없습니다.")
-            if task.scheduled_date == date.max:
+            if target_date is None and task.scheduled_date == date.max:
                 raise DomainError("date_limit", "더 이상 미룰 수 없는 날짜입니다.")
+            target_date = target_date or task.scheduled_date + timedelta(days=1)
+            if target_date <= task.scheduled_date:
+                raise DomainError("invalid_postpone_date", "기존 예정 날짜보다 이후의 날짜를 선택해 주세요.")
             before = self._snapshot(task)
-            task.scheduled_date += timedelta(days=1)
+            task.scheduled_date = target_date
             task.updated_at = utc_now()
             self.session.flush()
             self._record(task, EventType.UPDATED, before, task.updated_at, "POSTPONED")

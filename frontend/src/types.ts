@@ -50,6 +50,22 @@ export interface RetrospectiveDay extends Omit<DailyStatistics, 'total' | 'compl
   incomplete: number | null
   coverage: 'complete' | 'partial' | 'unavailable'
 }
+export interface AnalysisTag { tag_id: number | null; name: string; color: string | null }
+export interface TagActivity extends AnalysisTag {
+  total: number; completed: number; incomplete: number; completion_rate: number | null
+}
+export interface TagPostponements extends AnalysisTag {
+  postponed_tasks: number; total_postponements: number; postponed_days: number
+}
+export interface RetrospectiveAnalysis {
+  version: 'v0.2.3'
+  coverage: { status: 'complete' | 'partial' | 'unavailable'; recording_started_at: string | null }
+  tag_activity: TagActivity[]
+  postponements: {
+    postponed_tasks: number | null; total_postponements: number | null; postponed_days: number | null
+    by_tag: TagPostponements[]
+  }
+}
 export interface Retrospective {
   id: number
   kind: RetrospectiveKind
@@ -72,6 +88,7 @@ export interface Retrospective {
     activity: { unique_completed_tasks: number; task_ids: number[] }
     recording_started_at: string
     xp_policy: Record<string, unknown>
+    analysis?: RetrospectiveAnalysis | null
   }
 }
 export interface RetrospectiveList {

@@ -32,6 +32,44 @@ class RetrospectiveWeek(BaseModel):
     completion_rate: float | None
 
 
+class AnalysisCoverage(BaseModel):
+    status: Literal["complete", "partial", "unavailable"]
+    recording_started_at: datetime | None
+
+
+class AnalysisTag(BaseModel):
+    tag_id: int | None
+    name: str
+    color: str | None
+
+
+class TagActivity(AnalysisTag):
+    total: int
+    completed: int
+    incomplete: int
+    completion_rate: float | None
+
+
+class TagPostponements(AnalysisTag):
+    postponed_tasks: int
+    total_postponements: int
+    postponed_days: int
+
+
+class PostponementAnalysis(BaseModel):
+    postponed_tasks: int | None
+    total_postponements: int | None
+    postponed_days: int | None
+    by_tag: list[TagPostponements]
+
+
+class RetrospectiveAnalysis(BaseModel):
+    version: Literal["v0.2.3"]
+    coverage: AnalysisCoverage
+    tag_activity: list[TagActivity]
+    postponements: PostponementAnalysis
+
+
 class SnapshotData(BaseModel):
     completed_tasks: list[TaskRead]
     incomplete_tasks: list[TaskRead]
@@ -42,6 +80,7 @@ class SnapshotData(BaseModel):
     activity: dict
     recording_started_at: datetime
     xp_policy: dict
+    analysis: RetrospectiveAnalysis | None = None
 
 
 class SnapshotRead(BaseModel):
